@@ -1,0 +1,12 @@
+# .ruff.toml
+line-length = 100
+target-version = "py310"
+
+[lint]
+# Habilita regras de erro (E), aviso (W), isort (I) e flake8 (F)
+select = ["E", "F", "W", "I", "N"]
+ignore = ["D100"] # Ignora falta de docstring no topo do arquivo por enquanto
+
+[format]
+quote-style = "double"
+indent-style = "space"

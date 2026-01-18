@@ -1,0 +1,12 @@
+gru_connect:
+  target: dev
+  outputs:
+    dev:
+      type: spark
+      method: session
+      schema: gold
+      host: localhost  # Adicione esta linha para validar o esquema
+      threads: 4
+      conf:
+        "spark.sql.legacy.allowNonEmptyLocationInCTAS": "true"
+        "spark.sql.sources.partitionOverwriteMode": "dynamic"
