@@ -1,0 +1,53 @@
+# ==========================================
+# Python & Poetry
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.pytest_cache/
+.mypy_cache/
+.poetry.lock
+
+# ==========================================
+# Airflow (SISTEMA LOCAL)
+# ==========================================
+# Ignora a pasta inteira (logs, DB SQLite, etc)
+airflow/
+
+# Exceções: Mantém arquivos de configuração no Git
+!airflow/airflow.cfg
+!airflow/spark-defaults.conf
+
+# ==========================================
+# Data Lakehouse (LOCAL)
+# ==========================================
+# Nunca enviar dados brutos ou processados
+data/
+spark-warehouse/
+metastore_db/
+*.parquet
+*.csv
+derby.log
+
+# ==========================================
+# dbt
+# ==========================================
+dbt_gru/target/
+dbt_gru/dbt_packages/
+dbt_gru/logs/
+
+# ==========================================
+# IDEs & OS
+# ==========================================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+# ==========================================
+# Credenciais & Ambientes (SEGURANÇA)
+# ==========================================
+.env
+.python-version
