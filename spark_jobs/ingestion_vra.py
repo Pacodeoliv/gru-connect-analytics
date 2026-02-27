@@ -7,7 +7,7 @@ from pathlib import Path
 import requests
 import urllib3
 from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
+from pyspark.sql import functions as F  # noqa: N812
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 

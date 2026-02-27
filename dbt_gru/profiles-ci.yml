@@ -1,0 +1,8 @@
+gru_connect:
+  target: ci
+  outputs:
+    ci:
+      type: duckdb
+      path: /tmp/gru_ci.db
+      schema: gold
+      threads: 1
