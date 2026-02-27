@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: stg_anac_vra
+    description: >
+      Staging dos dados VRA (Voos Realizados pela Aviação) publicados mensalmente pela ANAC.
+      Filtra apenas voos de/para GRU (SBGR) e aplica tipagem e limpeza básica.
+      Fonte: https://siros.anac.gov.br/siros/registros/diversos/vra/
+    columns:
+      - name: cd_icao_empresa
+        description: "Código ICAO da empresa aérea (ex: GLO, TAM, AZU)"
+        tests:
+          - not_null
+      - name: nr_voo
+        description: "Número do voo operado pela empresa"
+        tests:
+          - not_null
+      - name: cd_icao_origem
+        description: "Código ICAO do aeroporto de origem"
+        tests:
+          - not_null
+      - name: cd_icao_destino
+        description: "Código ICAO do aeroporto de destino"
+        tests:
+          - not_null
+      - name: dt_partida_prevista
+        description: "Data/hora prevista de partida (timestamp)"
+      - name: dt_partida_real
+        description: "Data/hora real de partida (timestamp)"
+      - name: dt_chegada_prevista
+        description: "Data/hora prevista de chegada (timestamp)"
+      - name: dt_chegada_real
+        description: "Data/hora real de chegada (timestamp)"
+      - name: nm_situacao_voo
+        description: "Situação do voo (REALIZADO, CANCELADO, etc.)"
+        tests:
+          - accepted_values:
+              values: ['REALIZADO', 'CANCELADO', 'NÃO INFORMADO', 'REDESPACHADO', 'DESVIADO']
+              quote: false
+      - name: vl_atraso_chegada_min
+        description: "Atraso na chegada em minutos (negativo = adiantado)"

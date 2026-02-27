@@ -1,0 +1,85 @@
+version: 2
+
+models:
+  - name: fato_conexoes
+    description: >
+      Tabela fato do Star Schema. Cada linha é um par de voos (chegada + partida)
+      que configura uma potencial conexão de passageiro em GRU.
+      Inclui a janela de tempo disponível (janela_conexao_min) e o nível de
+      risco MCT (Minimum Connect Time).
+    columns:
+      - name: cd_icao_empresa
+        description: "Código ICAO da empresa aérea"
+        tests:
+          - not_null
+      - name: nr_voo_chegada
+        description: "Número do voo de chegada em GRU"
+        tests:
+          - not_null
+      - name: nr_voo_partida
+        description: "Número do voo de partida de GRU"
+        tests:
+          - not_null
+      - name: janela_conexao_min
+        description: "Tempo em minutos entre a chegada real e a partida prevista"
+        tests:
+          - not_null
+      - name: desc_status_risco
+        description: "Classificação MCT: Risco Crítico (<60min), Risco Médio (<90min), Seguro (≥90min)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Risco Crítico', 'Risco Médio', 'Seguro']
+      - name: dt_chegada_real
+        description: "Data/hora real de chegada do voo de conexão"
+      - name: dt_processamento
+        description: "Timestamp de quando o registro foi gerado pelo dbt"
+
+  - name: dim_aeroportos
+    description: "Dimensão de aeroportos com nome e cidade. Inclui flag de hub GRU."
+    columns:
+      - name: cd_icao
+        description: "Código ICAO do aeroporto (PK)"
+        tests:
+          - not_null
+          - unique
+      - name: nm_aeroporto
+        description: "Nome comum do aeroporto"
+        tests:
+          - not_null
+      - name: fl_hub_gru
+        description: "Indica se o aeroporto é o hub GRU (SBGR)"
+
+  - name: dim_empresas
+    description: "Dimensão de empresas aéreas com nome e classificação."
+    columns:
+      - name: cd_icao_empresa
+        description: "Código ICAO OACI da empresa (PK)"
+        tests:
+          - not_null
+          - unique
+      - name: nm_empresa
+        description: "Nome completo da empresa aérea"
+        tests:
+          - not_null
+      - name: cd_tipo_empresa
+        description: "Classificação: Nacional, Internacional, Regional ou Outro"
+
+  - name: dim_calendario
+    description: "Dimensão de datas derivada dos voos reais, com atributos de sazonalidade."
+    columns:
+      - name: sk_data
+        description: "Surrogate key — a própria data (DATE)"
+        tests:
+          - not_null
+          - unique
+      - name: nr_ano
+        description: "Ano"
+      - name: nr_mes
+        description: "Mês (1-12)"
+      - name: nr_dia
+        description: "Dia do mês"
+      - name: fl_fim_de_semana
+        description: "True se o dia for sábado ou domingo"
+      - name: nr_semana_ano
+        description: "Número da semana no ano (ISO week)"

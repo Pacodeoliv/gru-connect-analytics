@@ -1,91 +1,166 @@
+"""
+Bronze Layer Ingestion — ANAC VRA Data
+======================================
+Baixa o CSV mensal do VRA (Voos Realizados pela ANAC) e salva em formato
+Parquet na camada Bronze do Data Lakehouse.
+
+Uso:
+    python spark_jobs/ingestion_vra.py --ano 2025 --mes 01
+    # ou via variáveis de ambiente:
+    ANAC_ANO=2025 ANAC_MES=01 python spark_jobs/ingestion_vra.py
+"""
+import argparse
+import logging
 import os
-import requests
 import shutil
+import warnings
+from pathlib import Path
+
+import requests
+import urllib3
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
+from pyspark.sql.types import StructField, StructType, StringType, TimestampType
 
-# Configuração de caminhos baseada na estrutura que criamos
-BASE_DIR = os.getcwd()
-RAW_DIR = os.path.join(BASE_DIR, "data", "bronze")
-CSV_TEMP_DIR = os.path.join(BASE_DIR, "data", "temp_csv")
+# Suprime avisos de SSL do servidor governamental (certificado desatualizado)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Logging estruturado
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+log = logging.getLogger("gru.bronze.ingestion")
+
+# ─── Resolução de Caminhos via Env Var ───────────────────────────────────────
+BASE_DIR = Path(os.environ.get("GRU_BASE_DIR", Path(__file__).parent.parent))
+RAW_DIR = BASE_DIR / "data" / "bronze"
+CSV_TEMP_DIR = BASE_DIR / "data" / "temp_csv"
+
+# Nomes das colunas do CSV da ANAC (encoding ISO-8859-1 → mapeamento explícito)
+ANAC_COLUMN_MAP = {
+    "Sigla ICAO Empresa Aérea": "cd_icao_empresa",
+    "Número Voo": "nr_voo",
+    "Código Di": "cd_di",
+    "Código Tipo Linha": "cd_tipo_linha",
+    "Sigla ICAO Aeroporto Origem": "cd_icao_origem",
+    "Sigla ICAO Aeroporto Destino": "cd_icao_destino",
+    "Partida Prevista": "dt_partida_prevista",
+    "Partida Real": "dt_partida_real",
+    "Chegada Prevista": "dt_chegada_prevista",
+    "Chegada Real": "dt_chegada_real",
+    "Situação Voo": "nm_situacao_voo",
+    "Código Justificativa": "cd_justificativa",
+}
 
 
-def download_vra_anac(ano: str, mes: str):
-    """Baixa o CSV diretamente do diretório anual do servidor SIROS da ANAC."""
-    os.makedirs(CSV_TEMP_DIR, exist_ok=True)
+def parse_args():
+    parser = argparse.ArgumentParser(description="Ingere VRA da ANAC na camada Bronze.")
+    parser.add_argument(
+        "--ano",
+        default=os.environ.get("ANAC_ANO", "2025"),
+        help="Ano de referência ANAC (ex: 2025)",
+    )
+    parser.add_argument(
+        "--mes",
+        default=os.environ.get("ANAC_MES", "01"),
+        help="Mês de referência ANAC com zero-padding (ex: 01)",
+    )
+    return parser.parse_args()
+
+
+def download_vra_anac(ano: str, mes: str) -> Path:
+    """Baixa o CSV mensal do VRA do servidor SIROS/ANAC."""
+    CSV_TEMP_DIR.mkdir(parents=True, exist_ok=True)
     mes_pad = mes.zfill(2)
 
-    # URL ajustada conforme o diretório de 2025 que você validou
     url = f"https://siros.anac.gov.br/siros/registros/diversos/vra/{ano}/VRA_{ano}_{mes_pad}.csv"
-    file_path = os.path.join(CSV_TEMP_DIR, f"vra_{ano}_{mes_pad}.csv")
+    file_path = CSV_TEMP_DIR / f"vra_{ano}_{mes_pad}.csv"
 
-    print(f"--- Tentando baixar de: {url} ---")
+    log.info("Iniciando download: %s", url)
 
-    # verify=False ajuda se o servidor do governo estiver com problemas de SSL
-    response = requests.get(url, timeout=60, verify=False)
+    # verify=False necessário: servidor da ANAC usa certificado SSL auto-assinado
+    response = requests.get(url, timeout=60, verify=False)  # noqa: S501
 
     if response.status_code == 200:
-        with open(file_path, "wb") as f:
-            f.write(response.content)
-        print(f"--- Download concluído com sucesso: {file_path} ---")
+        file_path.write_bytes(response.content)
+        log.info("Download concluído: %s (%d bytes)", file_path, len(response.content))
         return file_path
-    else:
-        raise Exception(
-            f"Erro {response.status_code}. O arquivo não foi encontrado. Verifique o link."
-        )
+
+    raise RuntimeError(
+        f"HTTP {response.status_code} ao baixar VRA {ano}/{mes_pad}. "
+        f"Verifique se o arquivo existe em: {url}"
+    )
 
 
-def run_ingestion():
-    # Inicializa a Sessão Spark com foco em performance local
-    spark = (
+def build_spark() -> SparkSession:
+    return (
         SparkSession.builder.appName("GRU-Connect-Bronze-Ingestion")
         .config("spark.sql.parquet.compression.codec", "snappy")
+        .config("spark.ui.showConsoleProgress", "false")
         .getOrCreate()
     )
 
-    # Reduz logs para facilitar o debug do que importa
-    spark.sparkContext.setLogLevel("ERROR")
 
+def run_ingestion(ano: str, mes: str) -> None:
+    """Pipeline completo de ingestão Bronze para um mês específico."""
+    spark = build_spark()
+    spark.sparkContext.setLogLevel("WARN")
+
+    csv_path = None
     try:
-        # Vamos testar com os dados de Janeiro de 2025 que você mapeou
-        csv_path = download_vra_anac("2025", "01")
+        csv_path = download_vra_anac(ano, mes)
 
-        # Leitura técnica: ANAC usa ';' e encoding ISO-8859-1 (Latin1)
-        df = (
+        # ── Leitura com encoding correto (ISO-8859-1 = padrão ANAC) ─────────
+        # NÃO usamos inferSchema=true para evitar colunas com nomes corrompidos.
+        # O dicionário ANAC_COLUMN_MAP garante o mapeamento correto antes do save.
+        df_raw = (
             spark.read.format("csv")
             .option("header", "true")
             .option("sep", ";")
             .option("encoding", "ISO-8859-1")
-            .option("inferSchema", "true")
-            .load(csv_path)
+            .option("inferSchema", "false")  # Tudo como string — limpeza na Silver
+            .load(str(csv_path))
         )
 
-        print(f"Total de registros lidos: {df.count()}")
+        log.info("Total de registros lidos do CSV: %d", df_raw.count())
 
-        # Filtro de Negócio: Foco em Guarulhos (SBGR)
-        # Usando os nomes das colunas conforme o log do AnalysisException anterior
-        df_gru = df.filter(
-            (F.col("Sigla ICAO Aeroporto Origem") == "SBGR")
-            | (F.col("Sigla ICAO Aeroporto Destino") == "SBGR")
+        # ── Renomear colunas para snake_case antes de salvar no Parquet ──────
+        # Isso resolve o bug de encoding nos nomes de colunas no Parquet/Silver.
+        df_renamed = df_raw
+        for col_original, col_alias in ANAC_COLUMN_MAP.items():
+            if col_original in df_raw.columns:
+                df_renamed = df_renamed.withColumnRenamed(col_original, col_alias)
+
+        # ── Filtro de Negócio: foco em GRU (SBGR) ────────────────────────────
+        df_gru = df_renamed.filter(
+            (F.col("cd_icao_origem") == "SBGR")
+            | (F.col("cd_icao_destino") == "SBGR")
         )
 
-        # Salvando em Camada Bronze (Parquet)
-        output_path = os.path.join(RAW_DIR, "vra_gru_raw")
-        df_gru.write.mode("overwrite").parquet(output_path)
+        total_gru = df_gru.count()
+        log.info("Total de voos GRU filtrados: %d", total_gru)
 
-        print(f"--- Sucesso! Dados filtrados de GRU salvos em: {output_path} ---")
-        print(f"Total de registros de GRU: {df_gru.count()}")
+        if total_gru == 0:
+            raise ValueError(
+                "Nenhum voo de/para GRU encontrado. Verifique o arquivo VRA."
+            )
 
-    except Exception as e:
-        print(f"⚠️ Erro durante o processamento: {str(e)}")
-        raise
+        # ── Salvar na Bronze ────────────────────────────────────────────────
+        output_path = RAW_DIR / "vra_gru_raw"
+        df_gru.write.mode("overwrite").parquet(str(output_path))
+        log.info("Bronze salvo com sucesso em: %s", output_path)
 
     finally:
-        # Limpeza da pasta temporária de CSVs
-        if os.path.exists(CSV_TEMP_DIR):
+        # Limpeza do CSV temporário independente de sucesso/falha
+        if csv_path and CSV_TEMP_DIR.exists():
             shutil.rmtree(CSV_TEMP_DIR)
-            print("--- Pasta temporária limpa ---")
+            log.info("Pasta temporária limpa: %s", CSV_TEMP_DIR)
 
 
 if __name__ == "__main__":
-    run_ingestion()
+    args = parse_args()
+    log.info("=== Iniciando ingestão Bronze — VRA %s/%s ===", args.ano, args.mes)
+    run_ingestion(ano=args.ano, mes=args.mes)
+    log.info("=== Ingestão Bronze concluída ===")

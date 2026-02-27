@@ -11,7 +11,10 @@ dependencies = [
     "pyspark>=3.5.0",
     "dbt-spark[all]>=1.8.0",
     "apache-airflow>=2.8.0",
-    "requests>=2.31.0"
+    "requests>=2.31.0",
+    "urllib3>=2.0.0",
+    "astronomer-cosmos>=1.7.0",
+    "apache-airflow-providers-apache-spark>=4.0.0",
 ]
 
 [tool.poetry]

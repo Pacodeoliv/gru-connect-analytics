@@ -1,8 +1,8 @@
 {{ config(materialized='view') }}
 
 WITH source_data AS (
-    -- Em Spark local, lemos o caminho físico entre aspas simples e prefixo parquet
-    SELECT * FROM parquet.`/home/pacod/github/gru-connect-analytics/data/silver/stg_anac_vra`
+    -- env_var('GRU_BASE_DIR') elimina paths hardcoded — defina no seu .env
+    SELECT * FROM parquet.`{{ env_var('GRU_BASE_DIR') }}/data/silver/stg_anac_vra`
 )
 
 SELECT
