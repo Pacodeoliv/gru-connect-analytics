@@ -1,15 +1,3 @@
-# Docker Compose — GRU Connect Analytics
-# Sobe o ambiente completo: Airflow + Spark + Postgres
-#
-# Uso:
-#   cp .env.example .env          # configure as variáveis
-#   docker compose up -d          # sobe em background
-#   docker compose down           # para tudo
-#
-# Acesso:
-#   Airflow UI: http://localhost:8080  (admin / admin)
-#   Spark UI:   http://localhost:8081
-
 x-airflow-common: &airflow-common
   build:
     context: .
@@ -100,7 +88,6 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
-  # ─── Apache Spark Master (UI em localhost:8082) ───────────────────────────
   spark-master:
     image: bitnami/spark:3.5
     environment:

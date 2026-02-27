@@ -1,15 +1,3 @@
-"""
-DAG Gold — dbt via Astronomer Cosmos
-======================================
-Orquestra a camada Gold usando o Astronomer Cosmos, que transforma cada
-model dbt em uma task individual do Airflow — com linhagem, retries e logs
-separados por model.
-
-Dependências:
-    pip install astronomer-cosmos apache-airflow-providers-common-sql
-
-Referência: https://astronomer.github.io/astronomer-cosmos/
-"""
 from __future__ import annotations
 
 import os
@@ -41,32 +29,28 @@ DEFAULT_ARGS = {
 with DAG(
     dag_id="dag_gold_dbt_cosmos",
     default_args=DEFAULT_ARGS,
-    description="Gold Layer: modelagem dbt via Astronomer Cosmos (cada model = task Airflow).",
-    schedule="0 12 15 * *",  # 2h após a Silver
+    description="Gold Layer: dbt models via Astronomer Cosmos (each model = Airflow task).",
+    schedule="0 12 15 * *",
     start_date=datetime(2025, 1, 1),
     catchup=False,
     is_paused_upon_creation=True,
     tags=["gru", "gold", "dbt", "cosmos"],
 ) as dag:
 
-    inicio = EmptyOperator(task_id="inicio")
+    start = EmptyOperator(task_id="start")
 
-    # Aguarda a Silver do mesmo execution_date completar
-    aguardar_silver = ExternalTaskSensor(
-        task_id="aguardar_silver",
+    wait_silver = ExternalTaskSensor(
+        task_id="wait_silver",
         external_dag_id="dag_silver_transform",
-        external_task_id="fim",
+        external_task_id="end",
         timeout=3600,
         poke_interval=60,
         mode="reschedule",
     )
 
-    fim = EmptyOperator(task_id="fim")
+    end = EmptyOperator(task_id="end")
 
     if COSMOS_AVAILABLE:
-        # ── Cosmos: cada model dbt vira uma task com linhagem automática ─────
-        # A ordem de execução reflete o grafo de dependências do dbt:
-        # stg_anac_vra → dim_aeroportos + dim_empresas + dim_calendario → fato_conexoes
         dbt_gold = DbtTaskGroup(
             group_id="dbt_gold",
             project_config=ProjectConfig(
@@ -84,7 +68,6 @@ with DAG(
                 ),
             ),
             render_config=RenderConfig(
-                # Roda apenas staging + marts (exclui análises e snapshots)
                 select=["path:models/staging", "path:models/marts"],
                 dbt_executable_path="poetry",
             ),
@@ -94,11 +77,9 @@ with DAG(
             },
         )
 
-        inicio >> aguardar_silver >> dbt_gold >> fim
+        start >> wait_silver >> dbt_gold >> end
 
     else:
-        # ── Fallback: BashOperator enquanto o Cosmos não está instalado ──────
-        # Para ativar o Cosmos: pip install astronomer-cosmos
         from airflow.operators.bash import BashOperator
 
         dbt_run_fallback = BashOperator(
@@ -110,4 +91,4 @@ with DAG(
             env={"GRU_BASE_DIR": str(PROJECT_DIR)},
         )
 
-        inicio >> aguardar_silver >> dbt_run_fallback >> fim
+        start >> wait_silver >> dbt_run_fallback >> end

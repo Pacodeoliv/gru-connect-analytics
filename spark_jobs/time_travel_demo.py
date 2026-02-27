@@ -1,28 +1,12 @@
-"""
-Time Travel Demo — Apache Iceberg
-===================================
-Demonstra o recurso de time travel do Apache Iceberg: consultar versões
-anteriores da tabela fato_conexoes como se fosse um "git history" dos dados.
-
-Casos de uso reais:
-  - "Os dados mudaram entre ontem e hoje? Qual era o risco médio antes do reprocessamento?"
-  - Auditoria regulatória (ANAC pode exigir rastreabilidade)
-  - Debug: comparar execuções diferentes do pipeline
-
-Uso:
-    python spark_jobs/time_travel_demo.py
-    GRU_BASE_DIR=/meu/projeto python spark_jobs/time_travel_demo.py
-"""
 import logging
 import os
 from pathlib import Path
 
 from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 log = logging.getLogger("gru.iceberg.time_travel")
@@ -56,47 +40,38 @@ def run_demo() -> None:
 
     table = "local.gold.fato_conexoes"
 
-    # ── 1. Estado atual da tabela ─────────────────────────────────────────────
-    print("\n" + "═" * 60)
-    print("  DEMO: Apache Iceberg Time Travel — fato_conexoes")
-    print("═" * 60)
+    print("\nIceberg Time Travel — fato_conexoes\n")
 
-    df_atual = spark.table(table)
-    count_atual = df_atual.count()
-    print(f"\n📊 Estado ATUAL da tabela: {count_atual:,} conexões\n")
+    df_current = spark.table(table)
+    count_current = df_current.count()
+    print(f"Current state: {count_current:,} connections\n")
+    df_current.groupBy("desc_status_risco").count().orderBy("count", ascending=False).show()
 
-    df_atual.groupBy("desc_status_risco").count().orderBy("count", ascending=False).show()
-
-    # ── 2. Histórico de snapshots (cada run do pipeline = 1 snapshot) ─────────
-    print("\n📜 Histórico de Snapshots (cada execução do pipeline gera um snapshot):")
+    print("\nSnapshot history:")
     spark.sql(f"SELECT snapshot_id, committed_at, operation FROM {table}.snapshots").show(
         truncate=False
     )
 
-    # ── 3. Time Travel por número de snapshot ────────────────────────────────
-    print("\n⏮  Time Travel: consultando a versão ANTERIOR (penúltimo snapshot)...")
+    print("\nTime travel - reading previous snapshot...")
     snapshots = (
         spark.sql(f"SELECT snapshot_id FROM {table}.snapshots ORDER BY committed_at")
         .collect()
     )
 
     if len(snapshots) >= 2:
-        snapshot_anterior = snapshots[-2]["snapshot_id"]
-        df_anterior = spark.read.option("snapshot-id", snapshot_anterior).table(table)
-        count_anterior = df_anterior.count()
-        print(f"   Snapshot anterior ({snapshot_anterior}): {count_anterior:,} conexões")
-        print(f"   Diferença: {count_atual - count_anterior:+,} conexões desde então\n")
-        df_anterior.groupBy("desc_status_risco").count().orderBy("count", ascending=False).show()
+        prev_snapshot_id = snapshots[-2]["snapshot_id"]
+        df_prev = spark.read.option("snapshot-id", prev_snapshot_id).table(table)
+        count_prev = df_prev.count()
+        print(f"Snapshot {prev_snapshot_id}: {count_prev:,} connections")
+        print(f"Delta: {count_current - count_prev:+,} connections\n")
+        df_prev.groupBy("desc_status_risco").count().orderBy("count", ascending=False).show()
     else:
-        print("   (Execute o pipeline mais de uma vez para ver a comparação entre snapshots)")
+        print("Run the pipeline more than once to compare snapshots.")
 
-    # ── 4. Listar arquivos do manifesto Iceberg ──────────────────────────────
-    print("\n📁 Arquivos de Dados (Iceberg Manifest):")
+    print("\nData files (Iceberg manifest):")
     spark.sql(f"SELECT file_path, record_count, file_size_in_bytes FROM {table}.files").show(
         5, truncate=True
     )
-
-    print("\n✅ Demo concluída! O Iceberg rastreia TUDO automaticamente.")
 
 
 if __name__ == "__main__":

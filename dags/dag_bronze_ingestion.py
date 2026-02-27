@@ -1,11 +1,3 @@
-"""
-DAG Bronze — ANAC VRA Ingestion
-================================
-Orquestra o download do CSV da ANAC e a geração da camada Bronze.
-Executada mensalmente (os dados VRA são publicados mensalmente pela ANAC).
-
-Schedule: mensal, no dia 15 de cada mês (quando a ANAC costuma liberar os dados).
-"""
 from __future__ import annotations
 
 import os
@@ -31,21 +23,21 @@ DEFAULT_ARGS = {
 with DAG(
     dag_id="dag_bronze_ingestion",
     default_args=DEFAULT_ARGS,
-    description="Bronze Layer: download do VRA da ANAC e ingestão Parquet via PySpark.",
-    schedule="0 8 15 * *",   # Todo dia 15 às 08h (UTC-3 → ~11h UTC)
+    description="Bronze Layer: ANAC VRA download and Iceberg ingestion via PySpark.",
+    schedule="0 8 15 * *",
     start_date=datetime(2025, 1, 1),
     catchup=False,
     is_paused_upon_creation=True,
     tags=["gru", "bronze", "anac", "spark"],
     params={
         "ano": Param(default="{{ macros.ds_format(ds, '%Y-%m-%d', '%Y') }}", type="string",
-                     description="Ano de referência VRA (ex: 2025)"),
+                     description="Reference year (e.g. 2025)"),
         "mes": Param(default="{{ macros.ds_format(ds, '%Y-%m-%d', '%m') }}", type="string",
-                     description="Mês de referência com zero-padding (ex: 01)"),
+                     description="Reference month with zero-padding (e.g. 01)"),
     },
 ) as dag:
 
-    inicio = EmptyOperator(task_id="inicio")
+    start = EmptyOperator(task_id="start")
 
     ingest_bronze = BashOperator(
         task_id="ingest_bronze",
@@ -63,6 +55,6 @@ with DAG(
         do_xcom_push=False,
     )
 
-    fim = EmptyOperator(task_id="fim")
+    end = EmptyOperator(task_id="end")
 
-    inicio >> ingest_bronze >> fim
+    start >> ingest_bronze >> end

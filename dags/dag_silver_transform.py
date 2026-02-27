@@ -1,9 +1,3 @@
-"""
-DAG Silver — Spark Transformation
-===================================
-Lê a camada Bronze e aplica transformações (tipagem, limpeza, atraso) na Silver.
-Disparada automaticamente após a conclusão bem-sucedida da DAG Bronze.
-"""
 from __future__ import annotations
 
 import os
@@ -28,24 +22,23 @@ DEFAULT_ARGS = {
 with DAG(
     dag_id="dag_silver_transform",
     default_args=DEFAULT_ARGS,
-    description="Silver Layer: limpeza e tipagem dos dados de voos GRU via PySpark.",
-    schedule="0 10 15 * *",  # 2h após a Bronze (tempo suficiente para completar)
+    description="Silver Layer: typing and cleaning of GRU flight data via PySpark.",
+    schedule="0 10 15 * *",
     start_date=datetime(2025, 1, 1),
     catchup=False,
     is_paused_upon_creation=True,
     tags=["gru", "silver", "spark"],
 ) as dag:
 
-    inicio = EmptyOperator(task_id="inicio")
+    start = EmptyOperator(task_id="start")
 
-    # Aguarda a DAG Bronze do mesmo execution_date completar com sucesso
-    aguardar_bronze = ExternalTaskSensor(
-        task_id="aguardar_bronze",
+    wait_bronze = ExternalTaskSensor(
+        task_id="wait_bronze",
         external_dag_id="dag_bronze_ingestion",
-        external_task_id="fim",
-        timeout=3600,          # Máximo de 1h aguardando a Bronze
+        external_task_id="end",
+        timeout=3600,
         poke_interval=60,
-        mode="reschedule",     # Não bloqueia um worker slot enquanto espera
+        mode="reschedule",
     )
 
     transform_silver = BashOperator(
@@ -58,6 +51,6 @@ with DAG(
         do_xcom_push=False,
     )
 
-    fim = EmptyOperator(task_id="fim")
+    end = EmptyOperator(task_id="end")
 
-    inicio >> aguardar_bronze >> transform_silver >> fim
+    start >> wait_bronze >> transform_silver >> end

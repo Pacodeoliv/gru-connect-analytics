@@ -1,12 +1,3 @@
-"""
-Silver Layer Transformation — Iceberg
-=======================================
-Lê a tabela Iceberg da Bronze, aplica tipagem/limpeza e salva na Silver.
-
-Uso:
-    python spark_jobs/silver_transformation.py
-    GRU_BASE_DIR=/meu/projeto python spark_jobs/silver_transformation.py
-"""
 import logging
 import os
 from pathlib import Path
@@ -16,7 +7,7 @@ from pyspark.sql import functions as F
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 log = logging.getLogger("gru.silver.transformation")
@@ -49,15 +40,14 @@ def run_silver_transformation() -> None:
     spark = build_spark()
     spark.sparkContext.setLogLevel("WARN")
 
-    log.info("Lendo Bronze Iceberg: local.bronze.vra_gru_raw")
+    log.info("Reading Bronze: local.bronze.vra_gru_raw")
     df_bronze = spark.table("local.bronze.vra_gru_raw")
 
     count_bronze = df_bronze.count()
-    log.info("Registros lidos da Bronze: %d", count_bronze)
+    log.info("Records in Bronze: %d", count_bronze)
     if count_bronze == 0:
-        raise ValueError("Bronze está vazia. Execute a ingestão Bronze primeiro.")
+        raise ValueError("Bronze table is empty. Run the Bronze ingestion first.")
 
-    # ── Tipagem, limpeza e métricas ──────────────────────────────────────────
     df_silver = (
         df_bronze
         .select(
@@ -83,33 +73,24 @@ def run_silver_transformation() -> None:
         )
     )
 
-    # ── QA: log de nulos em campos críticos ──────────────────────────────────
     for col_name in ["cd_icao_empresa", "nr_voo", "dt_chegada_real"]:
         null_count = df_silver.filter(F.col(col_name).isNull()).count()
         if null_count > 0:
-            log.warning("Coluna '%s': %d nulos detectados", col_name, null_count)
+            log.warning("Nulls in '%s': %d", col_name, null_count)
 
-    # ── Salvar como tabela Iceberg (Silver) ──────────────────────────────────
     spark.sql("CREATE NAMESPACE IF NOT EXISTS local.silver")
     table_name = "local.silver.stg_anac_vra"
 
     if spark.catalog.tableExists(table_name):
-        # Upsert por mês: deletar e reinserir (idempotente)
-        spark.sql(f"""
-            DELETE FROM {table_name} WHERE nr_ano IN (
-                SELECT DISTINCT nr_ano FROM {table_name}
-            )
-        """)
-        # Substitui tudo pela versão atualizada
         df_silver.writeTo(table_name).overwritePartitions()
     else:
         df_silver.writeTo(table_name).partitionedBy("nr_ano", "nr_mes").createOrReplace()
 
-    log.info("Tabela Iceberg Silver atualizada: %s", table_name)
+    log.info("Silver Iceberg table updated: %s", table_name)
     df_silver.show(5, truncate=False)
 
 
 if __name__ == "__main__":
-    log.info("=== Silver Transformation ===")
+    log.info("Silver transformation")
     run_silver_transformation()
-    log.info("=== Concluído ===")
+    log.info("Done")
