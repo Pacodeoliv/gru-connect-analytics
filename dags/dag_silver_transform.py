@@ -4,10 +4,11 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.empty import EmptyOperator
 from airflow.sensors.external_task import ExternalTaskSensor
+
+from airflow import DAG
 
 PROJECT_DIR = os.environ.get("GRU_BASE_DIR", str(Path(__file__).parent.parent))
 

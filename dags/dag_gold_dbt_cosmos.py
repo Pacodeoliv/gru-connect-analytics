@@ -4,12 +4,13 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 from airflow.sensors.external_task import ExternalTaskSensor
 
+from airflow import DAG
+
 try:
-    from cosmos import DbtTaskGroup, ProjectConfig, ProfileConfig, RenderConfig
+    from cosmos import DbtTaskGroup, ProfileConfig, ProjectConfig, RenderConfig
     from cosmos.profiles import SparkThriftProfileMapping
     COSMOS_AVAILABLE = True
 except ImportError:
