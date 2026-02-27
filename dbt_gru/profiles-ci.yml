@@ -1,0 +1,16 @@
+# profiles.yml usado APENAS no CI/CD (GitHub Actions).
+# Usa dbt-duckdb (sem Java/Spark) para validar sintaxe SQL e Jinja dos models.
+# Em produção local use o profiles.yml principal (type: spark).
+gru_connect:
+  target: ci
+  outputs:
+    ci:
+      type: duckdb
+      path: /tmp/gru_ci.db
+      schema: gold
+      threads: 1
+    dev:
+      type: duckdb
+      path: /tmp/gru_dev.db
+      schema: gold
+      threads: 2

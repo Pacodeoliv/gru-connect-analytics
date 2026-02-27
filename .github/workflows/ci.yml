@@ -1,78 +1,70 @@
-name: CI — GRU Connect Analytics
+name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
-  # ─── Job 1: Linting Python ────────────────────────────────────────────────
   lint:
-    name: Lint Python (Ruff)
+    name: Lint (Ruff)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python 3.10
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
           cache: "pip"
 
-      - name: Install Ruff
-        run: pip install ruff==0.1.0
+      - run: pip install "ruff>=0.1.0"
 
-      - name: Run Ruff
-        run: ruff check spark_jobs/ dags/
+      - run: ruff check spark_jobs/ dags/
 
-  # ─── Job 2: Validação dbt (sem Spark) ────────────────────────────────────
   dbt-validate:
-    name: Validate dbt Project
+    name: dbt validate
     runs-on: ubuntu-latest
     env:
       GRU_BASE_DIR: /tmp/gru-data
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python 3.10
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
           cache: "pip"
 
-      - name: Install dbt-spark
-        # Instala apenas o core do dbt — não precisa de Spark para validar SQL
-        run: pip install "dbt-spark>=1.8.0" "dbt-core>=1.8.0"
+      - name: Install dbt-duckdb
+        # Uses duckdb adapter (no Java/Spark needed) to validate SQL and Jinja syntax.
+        # The production adapter (dbt-spark) is used locally; CI only needs parse+compile.
+        run: pip install "dbt-duckdb>=1.8.0,<2.0.0"
 
-      - name: dbt parse (valida sintaxe de todos os models)
+      - name: dbt parse
         working-directory: dbt_gru
-        run: dbt parse --profiles-dir . --target dev
+        run: dbt parse --profiles-dir . --profile gru_connect --target ci
 
-      - name: dbt compile (expande todos os Jinja/refs sem executar)
+      - name: dbt compile
         working-directory: dbt_gru
-        run: dbt compile --profiles-dir . --target dev
+        run: dbt compile --profiles-dir . --profile gru_connect --target ci
 
-  # ─── Job 3: Testes unitários Python ───────────────────────────────────────
   unit-tests:
-    name: Unit Tests (pytest)
+    name: Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python 3.10
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
           cache: "pip"
 
-      - name: Install test dependencies
-        run: pip install pytest requests
+      - run: pip install pytest
 
       - name: Run tests
-        run: pytest tests/ -v --tb=short
-        # O pytest não falha o CI se não houver testes ainda (exit 0 para dir vazia)
-        continue-on-error: true
+        run: |
+          if [ -d "tests" ] && [ "$(ls -A tests/)" ]; then
+            pytest tests/ -v --tb=short
+          else
+            echo "No tests found, skipping."
+          fi

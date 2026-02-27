@@ -18,9 +18,9 @@ O sucesso de um hub aeroportuário depende do **Minimum Connect Time (MCT)** —
 
 | Status | Janela de Conexão | Risco |
 |--------|:-----------------:|-------|
-| 🔴 **Risco Crítico** | < 60 min | Alto risco de miss-connection |
-| 🟡 **Risco Médio** | 60 – 90 min | Conexão viável mas sob pressão |
-| 🟢 **Seguro** | ≥ 90 min | Conexão confortável |
+| **Risco Crítico** | < 60 min | Alto risco de miss-connection |
+| **Risco Médio** | 60 – 90 min | Conexão viável mas sob pressão |
+| **Seguro** | ≥ 90 min | Conexão confortável |
 
 ---
 
@@ -29,23 +29,23 @@ O sucesso de um hub aeroportuário depende do **Minimum Connect Time (MCT)** —
 ```mermaid
 graph TD
     subgraph Fonte
-        ANAC["ANAC VRA\n(CSV Mensal)"]
+        ANAC["ANAC VRA - CSV Mensal"]
     end
 
     subgraph Airflow["Orquestração — Apache Airflow 2.8+"]
-        DAG_B["dag_bronze_ingestion\n(schedule: mensal)"]
-        DAG_S["dag_silver_transform\n(ExternalTaskSensor)"]
-        DAG_G["dag_gold_dbt_cosmos\n(Astronomer Cosmos)"]
+        DAG_B["dag_bronze_ingestion (mensal)"]
+        DAG_S["dag_silver_transform (ExternalTaskSensor)"]
+        DAG_G["dag_gold_dbt_cosmos (Astronomer Cosmos)"]
         DAG_B -->|ExternalTaskSensor| DAG_S
         DAG_S -->|ExternalTaskSensor| DAG_G
     end
 
     subgraph Lakehouse["Data Lakehouse — Arquitetura Medallion"]
-        BRONZE["Bronze\nParquet (raw + renomeado)"]
-        SILVER["Silver\nParquet (tipado + limpo)"]
-        GOLD["Gold\nStar Schema (dbt models)"]
-        BRONZE -->|"PySpark\n(silver_transformation.py)"| SILVER
-        SILVER -->|"dbt-spark\n(via Cosmos)"| GOLD
+        BRONZE["Bronze — Iceberg raw"]
+        SILVER["Silver — Iceberg tipado + limpo"]
+        GOLD["Gold — Star Schema dbt"]
+        BRONZE -->|"PySpark silver_transformation.py"| SILVER
+        SILVER -->|"dbt-spark via Cosmos"| GOLD
     end
 
     subgraph Gold_Tables["Camada Gold — Star Schema"]
@@ -59,7 +59,7 @@ graph TD
         GOLD --> D3
     end
 
-    ANAC -->|"requests + PySpark\n(ingestion_vra.py)"| BRONZE
+    ANAC -->|"requests + PySpark ingestion_vra.py"| BRONZE
 ```
 
 ### Por que Astronomer Cosmos?
