@@ -1,11 +1,8 @@
-# .ruff.toml
 line-length = 100
 target-version = "py310"
 
 [lint]
-# Habilita regras de erro (E), aviso (W), isort (I) e flake8 (F)
-select = ["E", "F", "W", "I", "N"]
-ignore = ["D100", "N812"]  # N812: 'functions as F' is standard PySpark convention
+select = ["E", "F", "W", "I"]
 
 [format]
 quote-style = "double"

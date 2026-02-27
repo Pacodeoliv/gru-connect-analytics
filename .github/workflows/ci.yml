@@ -21,7 +21,7 @@ jobs:
       - run: pip install "ruff>=0.1.0"
 
       # Pass --ignore N812 directly: 'functions as F' is standard PySpark convention
-      - run: ruff check spark_jobs/ dags/ --ignore N812
+      - run: ruff check spark_jobs/ dags/
 
   dbt-validate:
     name: dbt validate
