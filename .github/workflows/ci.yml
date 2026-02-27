@@ -20,14 +20,7 @@ jobs:
 
       - run: pip install "ruff>=0.1.0"
 
-      # Pass --ignore N812 directly: 'functions as F' is standard PySpark convention
-      - name: Debug ruff config
-        run: |
-          ruff --version
-          cat .ruff.toml || echo "no .ruff.toml found"
-          ruff check spark_jobs/ dags/ --output-format=github || true
-
-      - name: Lint check
+      - name: Run Ruff
         run: ruff check spark_jobs/ dags/
 
   dbt-validate:
