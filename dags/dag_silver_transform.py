@@ -46,7 +46,7 @@ with DAG(
         task_id="transform_silver",
         bash_command=(
             f"cd {PROJECT_DIR} && "
-            "poetry run python spark_jobs/silver_transformation.py"
+            "python spark_jobs/silver_transformation.py"
         ),
         env={"GRU_BASE_DIR": PROJECT_DIR},
         do_xcom_push=False,
