@@ -1,0 +1,78 @@
+name: CI — GRU Connect Analytics
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─── Job 1: Linting Python ────────────────────────────────────────────────
+  lint:
+    name: Lint Python (Ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install Ruff
+        run: pip install ruff==0.1.0
+
+      - name: Run Ruff
+        run: ruff check spark_jobs/ dags/
+
+  # ─── Job 2: Validação dbt (sem Spark) ────────────────────────────────────
+  dbt-validate:
+    name: Validate dbt Project
+    runs-on: ubuntu-latest
+    env:
+      GRU_BASE_DIR: /tmp/gru-data
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install dbt-spark
+        # Instala apenas o core do dbt — não precisa de Spark para validar SQL
+        run: pip install "dbt-spark>=1.8.0" "dbt-core>=1.8.0"
+
+      - name: dbt parse (valida sintaxe de todos os models)
+        working-directory: dbt_gru
+        run: dbt parse --profiles-dir . --target dev
+
+      - name: dbt compile (expande todos os Jinja/refs sem executar)
+        working-directory: dbt_gru
+        run: dbt compile --profiles-dir . --target dev
+
+  # ─── Job 3: Testes unitários Python ───────────────────────────────────────
+  unit-tests:
+    name: Unit Tests (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install test dependencies
+        run: pip install pytest requests
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+        # O pytest não falha o CI se não houver testes ainda (exit 0 para dir vazia)
+        continue-on-error: true

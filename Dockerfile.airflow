@@ -1,0 +1,29 @@
+# Dockerfile para Airflow customizado com todo o stack do projeto
+# Base: Apache Airflow 2.8 com Python 3.10
+FROM apache/airflow:2.8.4-python3.10
+
+# Instalar dependências do sistema para PySpark (Java)
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openjdk-17-jdk-headless \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+
+USER airflow
+
+# Copiar pyproject.toml para instalar as dependências Python
+COPY --chown=airflow:root pyproject.toml /opt/airflow/
+
+# Instalar dependências Python no ambiente do Airflow
+# Usamos pip diretamente pois o Airflow não usa Poetry internamente
+RUN pip install --no-cache-dir \
+    "pyspark>=3.5.0" \
+    "dbt-spark[all]>=1.8.0" \
+    "astronomer-cosmos>=1.7.0" \
+    "apache-airflow-providers-apache-spark>=4.0.0" \
+    "requests>=2.31.0" \
+    "urllib3>=2.0.0" \
+    # Iceberg runtime para PySpark (JAR é gerenciado pelo Spark, não pelo pip)
+    "pyarrow>=14.0.0"

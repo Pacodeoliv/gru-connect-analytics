@@ -1,13 +1,13 @@
 {{ config(
     materialized='table',
-    file_format='parquet',
-    options={'path': env_var('GRU_BASE_DIR') ~ '/data/gold/dim_calendario'}
+    file_format='iceberg',
+    on_schema_change='sync_all_columns'
 ) }}
 
 WITH datas AS (
     SELECT DISTINCT
         to_date(dt_partida_prevista) AS data_referencia
-    FROM {{ ref('stg_anac_vra') }}
+    FROM local.silver.stg_anac_vra
     WHERE dt_partida_prevista IS NOT NULL
 )
 
@@ -19,9 +19,7 @@ SELECT
     quarter(data_referencia)                                    AS nr_trimestre,
     date_format(data_referencia, 'EEEE')                        AS nm_dia_semana,
     date_format(data_referencia, 'MMMM')                        AS nm_mes,
-    -- Flag de fim de semana (útil para análise de conexões operacionais)
     CASE WHEN dayofweek(data_referencia) IN (1, 7) THEN true ELSE false END AS fl_fim_de_semana,
-    -- Número da semana no ano (para análise de sazonalidade)
     weekofyear(data_referencia)                                 AS nr_semana_ano
 FROM datas
 ORDER BY data_referencia

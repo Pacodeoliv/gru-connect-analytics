@@ -2,11 +2,13 @@
 
 > **End-to-End Data Engineering Portfolio** — análise de risco de conexões de passageiros no Aeroporto Internacional de Guarulhos (GRU/SBGR) usando dados oficiais da ANAC.
 
+![CI](https://github.com/Pacodeoliv/gru-connect-analytics/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square)
 ![PySpark](https://img.shields.io/badge/PySpark-3.5-orange?style=flat-square)
 ![dbt](https://img.shields.io/badge/dbt--spark-1.8-green?style=flat-square)
 ![Airflow](https://img.shields.io/badge/Airflow-2.8%2B-red?style=flat-square)
 ![Cosmos](https://img.shields.io/badge/Astronomer--Cosmos-1.7-purple?style=flat-square)
+![Iceberg](https://img.shields.io/badge/Apache%20Iceberg-1.5-teal?style=flat-square)
 
 ---
 
@@ -81,11 +83,13 @@ O Cosmos converte o grafo de dependências do dbt diretamente em tasks individua
 | Camada | Tecnologia |
 |--------|-----------|
 | Ingestão & Processamento | PySpark 3.5 |
-| Modelagem Analítica | dbt-spark 1.8 |
+| Formato de Armazenamento | **Apache Iceberg 1.5** (ACID, Time Travel, Schema Evolution) |
+| Modelagem Analítica | dbt-spark 1.8 (incremental merge) |
 | Orquestração | Apache Airflow 2.8 |
 | Integração dbt↔Airflow | **Astronomer Cosmos 1.7** |
 | Qualidade de Dados | dbt tests (not_null, unique, accepted_values) |
-| Formato de Armazenamento | Parquet (Snappy) |
+| Containerização | Docker Compose (Airflow + Spark + Postgres) |
+| CI/CD | GitHub Actions (lint + dbt validate + pytest) |
 | Linting | Ruff |
 | Gerenciador de Pacotes | Poetry |
 
@@ -122,10 +126,24 @@ gru-connect-analytics/
 
 ## Quick Start
 
-### 1. Pré-requisitos
+### Opção A — Docker Compose (recomendado)
+
+```bash
+git clone https://github.com/Pacodeoliv/gru-connect-analytics.git
+cd gru-connect-analytics
+cp .env.example .env          # configure AIRFLOW_UID=$(id -u)
+docker compose up -d          # sobe Airflow + Spark + Postgres
+```
+
+- **Airflow UI:** `http://localhost:8080` (admin / admin)
+- **Spark UI:** `http://localhost:8082`
+
+### Opção B — Local com Poetry
+
+#### Pré-requisitos
 
 - Python 3.10+
-- Java 11+ (necessário para PySpark)
+- Java 17+ (necessário para PySpark + Iceberg)
 - Poetry
 
 ### 2. Instalação

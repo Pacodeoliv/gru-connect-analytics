@@ -1,12 +1,12 @@
 {{ config(
     materialized='table',
-    file_format='parquet',
-    options={'path': env_var('GRU_BASE_DIR') ~ '/data/gold/dim_empresas'}
+    file_format='iceberg',
+    on_schema_change='sync_all_columns'
 ) }}
 
 WITH empresas AS (
     SELECT DISTINCT cd_icao_empresa
-    FROM {{ ref('stg_anac_vra') }}
+    FROM local.silver.stg_anac_vra
     WHERE cd_icao_empresa IS NOT NULL
 )
 

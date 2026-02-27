@@ -1,0 +1,39 @@
+# Arquivos gerados pelo Python/Spark
+__pycache__/
+*.py[cod]
+*.pyo
+.ruff_cache/
+
+# Dados gerados (não versionados)
+data/
+warehouse/
+
+# Ambiente virtual e lockfiles desnecessários no build
+.venv/
+poetry.lock
+
+# Airflow gerado
+airflow/
+logs/
+
+# dbt gerado
+dbt_gru/target/
+dbt_gru/dbt_packages/
+dbt_gru/metastore_db/
+dbt_gru/derby.log
+dbt_gru/logs/
+
+# Git e IDE
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# Variáveis de ambiente reais (nunca entrar no container)
+.env
+
+# CI/CD
+.github/
+
+# Documentação (não necessária no container)
+readme.md
