@@ -44,7 +44,7 @@ with DAG(
         task_id="ingest_bronze",
         bash_command=(
             "cd {{ params.get('project_dir', '" + PROJECT_DIR + "') }} && "
-            "poetry run python spark_jobs/ingestion_vra.py "
+            "python spark_jobs/ingestion_vra.py "
             "--ano {{ params.ano }} "
             "--mes {{ params.mes }}"
         ),

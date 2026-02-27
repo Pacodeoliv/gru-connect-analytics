@@ -1,7 +1,9 @@
-FROM apache/airflow:2.8.4-python3.10
+FROM apache/airflow:2.9.2-python3.10
+
 USER root
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    openjdk-17-jdk-headless \
+# Instala o Java (necessário para o PySpark)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openjdk-17-jre-headless curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -9,13 +11,21 @@ ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
 USER airflow
 
-COPY --chown=airflow:root pyproject.toml /opt/airflow/
+ARG CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-2.9.2/constraints-3.10.txt"
 
+# 1. Instala PySpark e o provider (com constraints oficiais para não gerar ResolutionTooDeep)
+RUN pip install --no-cache-dir -c "${CONSTRAINT_URL}" \
+    pyspark \
+    apache-airflow-providers-apache-spark \
+    requests \
+    urllib3
+
+# 2. Instala dbt-spark e Cosmos (livres das amarras da constraint do Airflow)
+#    Pinning dbt-core==1.8.0 to match dbt-spark and prevent pip backtracking
+#    Both [PySpark] and [PyHive] extras needed: PySpark for local execution,
+#    PyHive for Cosmos SparkThriftProfileMapping (dbt ls at parse time)
 RUN pip install --no-cache-dir \
-    "pyspark>=3.5.0" \
-    "dbt-spark[all]>=1.8.0" \
-    "astronomer-cosmos>=1.7.0" \
-    "apache-airflow-providers-apache-spark>=4.0.0" \
-    "requests>=2.31.0" \
-    "urllib3>=2.0.0" \
-    "pyarrow>=14.0.0"
+    dbt-core==1.8.0 \
+    "dbt-spark[PySpark,PyHive]==1.8.0" \
+    astronomer-cosmos==1.7.0
+

@@ -70,7 +70,7 @@ with DAG(
             ),
             render_config=RenderConfig(
                 select=["path:models/staging", "path:models/marts"],
-                dbt_executable_path="poetry",
+                dbt_executable_path="dbt",
             ),
             operator_args={
                 "env": {"GRU_BASE_DIR": str(PROJECT_DIR)},
@@ -87,7 +87,7 @@ with DAG(
             task_id="dbt_run_gold_fallback",
             bash_command=(
                 f"cd {DBT_PROJECT_DIR} && "
-                "poetry run dbt run --profiles-dir . --select models/staging+ --full-refresh"
+                "dbt run --profiles-dir . --select models/staging+ --full-refresh"
             ),
             env={"GRU_BASE_DIR": str(PROJECT_DIR)},
         )
