@@ -1,54 +1,54 @@
-# GRU Connect Analytics ✈️
+# GRU Connect Analytics
 
-> **End-to-End Data Engineering Portfolio** — análise de risco de conexões de passageiros no Aeroporto Internacional de Guarulhos (GRU/SBGR) usando dados oficiais da ANAC.
+> **End-to-End Data Engineering Portfolio** — passenger connection risk analysis at Guarulhos International Airport (GRU/SBGR) using official ANAC data.
 
 ![CI](https://github.com/Pacodeoliv/gru-connect-analytics/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square)
 ![PySpark](https://img.shields.io/badge/PySpark-3.5-orange?style=flat-square)
 ![dbt](https://img.shields.io/badge/dbt--spark-1.8-green?style=flat-square)
-![Airflow](https://img.shields.io/badge/Airflow-2.8%2B-red?style=flat-square)
+![Airflow](https://img.shields.io/badge/Airflow-2.9-red?style=flat-square)
 ![Cosmos](https://img.shields.io/badge/Astronomer--Cosmos-1.7-purple?style=flat-square)
 ![Iceberg](https://img.shields.io/badge/Apache%20Iceberg-1.5-teal?style=flat-square)
 
 ---
 
-## Contexto de Negócio
+## Business Context
 
-O sucesso de um hub aeroportuário depende do **Minimum Connect Time (MCT)** — o tempo mínimo para um passageiro desembarcar, transitar e embarcar em um voo de conexão. Este projeto analisa os dados reais de voos da ANAC (VRA) para classificar automaticamente cada par de conexão em GRU:
+The success of an airport hub depends on the **Minimum Connect Time (MCT)** — the shortest time for a passenger to deplane, transit, and board a connecting flight. This project analyses real ANAC flight data (VRA) to automatically classify every connection pair at GRU:
 
-| Status | Janela de Conexão | Risco |
-|--------|:-----------------:|-------|
-| **Risco Crítico** | < 60 min | Alto risco de miss-connection |
-| **Risco Médio** | 60 – 90 min | Conexão viável mas sob pressão |
-| **Seguro** | ≥ 90 min | Conexão confortável |
+| Status | Connection Window | Risk |
+|--------|:-----------------:|------|
+| **Critical Risk** | < 60 min | High miss-connection probability |
+| **Medium Risk** | 60 – 90 min | Feasible but under pressure |
+| **Safe** | >= 90 min | Comfortable connection |
 
 ---
 
-## Arquitetura
+## Architecture
 
 ```mermaid
 graph TD
-    subgraph Fonte
-        ANAC["ANAC VRA - CSV Mensal"]
+    subgraph Source
+        ANAC["ANAC VRA - Monthly CSV"]
     end
 
-    subgraph Airflow["Orquestração — Apache Airflow 2.8+"]
-        DAG_B["dag_bronze_ingestion (mensal)"]
+    subgraph Airflow["Orchestration — Apache Airflow 2.9"]
+        DAG_B["dag_bronze_ingestion (monthly)"]
         DAG_S["dag_silver_transform (ExternalTaskSensor)"]
         DAG_G["dag_gold_dbt_cosmos (Astronomer Cosmos)"]
         DAG_B -->|ExternalTaskSensor| DAG_S
         DAG_S -->|ExternalTaskSensor| DAG_G
     end
 
-    subgraph Lakehouse["Data Lakehouse — Arquitetura Medallion"]
+    subgraph Lakehouse["Data Lakehouse — Medallion Architecture"]
         BRONZE["Bronze — Iceberg raw"]
-        SILVER["Silver — Iceberg tipado + limpo"]
+        SILVER["Silver — Iceberg typed + cleaned"]
         GOLD["Gold — Star Schema dbt"]
         BRONZE -->|"PySpark silver_transformation.py"| SILVER
         SILVER -->|"dbt-spark via Cosmos"| GOLD
     end
 
-    subgraph Gold_Tables["Camada Gold — Star Schema"]
+    subgraph Gold_Tables["Gold Layer — Star Schema"]
         FATO["fato_conexoes"]
         D1["dim_aeroportos"]
         D2["dim_empresas"]
@@ -62,15 +62,15 @@ graph TD
     ANAC -->|"requests + PySpark ingestion_vra.py"| BRONZE
 ```
 
-### Por que Astronomer Cosmos?
+### Why Astronomer Cosmos?
 
-O Cosmos converte o grafo de dependências do dbt diretamente em tasks individuais do Airflow. Isso significa que cada model dbt (`stg_anac_vra`, `dim_aeroportos`, `fato_conexoes`, etc.) tem seu próprio log, retry e estado no Airflow — permitindo debugging granular e maior observabilidade.
+Cosmos converts the dbt dependency graph directly into individual Airflow tasks. Each dbt model (`stg_anac_vra`, `dim_aeroportos`, `fato_conexoes`, etc.) has its own log, retry, and state in Airflow — enabling granular debugging and full observability.
 
 ```
-# Sem Cosmos: 1 BashOperator "dbt run"
+# Without Cosmos: 1 BashOperator "dbt run"
 [dbt_run_gold]
 
-# Com Cosmos: linhagem real no Airflow
+# With Cosmos: real lineage in Airflow
 [stg_anac_vra] → [dim_aeroportos] → [fato_conexoes]
               → [dim_empresas]   ↗
               → [dim_calendario] ↗
@@ -78,133 +78,133 @@ O Cosmos converte o grafo de dependências do dbt diretamente em tasks individua
 
 ---
 
-## Stack Tecnológica
+## Tech Stack
 
-| Camada | Tecnologia |
-|--------|-----------|
-| Ingestão & Processamento | PySpark 3.5 |
-| Formato de Armazenamento | **Apache Iceberg 1.5** (ACID, Time Travel, Schema Evolution) |
-| Modelagem Analítica | dbt-spark 1.8 (incremental merge) |
-| Orquestração | Apache Airflow 2.8 |
-| Integração dbt↔Airflow | **Astronomer Cosmos 1.7** |
-| Qualidade de Dados | dbt tests (not_null, unique, accepted_values) |
-| Containerização | Docker Compose (Airflow + Spark + Postgres) |
+| Layer | Technology |
+|-------|-----------|
+| Ingestion & Processing | PySpark 3.5 |
+| Storage Format | **Apache Iceberg 1.5** (ACID, Time Travel, Schema Evolution) |
+| Analytical Modeling | dbt-spark 1.8 (incremental merge) |
+| Orchestration | Apache Airflow 2.9 |
+| dbt-Airflow Integration | **Astronomer Cosmos 1.7** |
+| Data Quality | dbt tests (not_null, unique, accepted_values) |
+| Containerization | Docker Compose (Airflow + Spark + Postgres) |
 | CI/CD | GitHub Actions (lint + dbt validate + pytest) |
 | Linting | Ruff |
-| Gerenciador de Pacotes | Poetry |
 
 ---
 
-## Estrutura do Projeto
+## Project Structure
 
 ```
 gru-connect-analytics/
 ├── dags/
-│   ├── dag_bronze_ingestion.py   # Bronze: download + ingestão PySpark
-│   ├── dag_silver_transform.py   # Silver: limpeza e tipagem PySpark
-│   └── dag_gold_dbt_cosmos.py    # Gold: modelagem dbt via Cosmos
+│   ├── dag_bronze_ingestion.py   # Bronze: ANAC download + PySpark ingestion
+│   ├── dag_silver_transform.py   # Silver: typing and cleaning via PySpark
+│   └── dag_gold_dbt_cosmos.py    # Gold: dbt modeling via Cosmos
 ├── spark_jobs/
-│   ├── ingestion_vra.py          # Lógica de download e ingestão Bronze
-│   ├── silver_transformation.py  # Transformações Silver
-│   └── inspect_gold.py           # Utilitário de inspeção Gold
+│   ├── ingestion_vra.py          # Download and Bronze ingestion logic
+│   ├── silver_transformation.py  # Silver transformations
+│   └── inspect_gold.py           # Gold inspection utility
 ├── dbt_gru/
 │   └── models/
 │       ├── staging/
 │       │   ├── stg_anac_vra.sql  # Staging VRA
-│       │   └── schema.yml        # Testes de qualidade
+│       │   └── schema.yml        # Quality tests
 │       └── marts/
 │           ├── fato_conexoes.sql
 │           ├── dim_aeroportos.sql
 │           ├── dim_empresas.sql
 │           ├── dim_calendario.sql
-│           └── schema.yml        # Testes e documentação
-├── .env.example                  # Variáveis de ambiente necessárias
-└── pyproject.toml                # Dependências (Poetry)
+│           └── schema.yml        # Tests and documentation
+├── scripts/
+│   ├── docker-init.sh            # Bootstrap: DB migrate + admin user + Spark connection
+│   └── backfill.sh               # Multi-month VRA ingestion utility
+├── Dockerfile.airflow            # Custom Airflow image (Java + PySpark + dbt + Cosmos)
+├── docker-compose.yml            # Full stack: Airflow + Spark + Postgres
+├── .env.example                  # Required environment variables
+└── pyproject.toml                # Python dependencies
 ```
 
 ---
 
 ## Quick Start
 
-### Opção A — Docker Compose (recomendado)
+### Prerequisites
+
+- Docker and Docker Compose
+
+### 1. Clone and configure
 
 ```bash
 git clone https://github.com/Pacodeoliv/gru-connect-analytics.git
 cd gru-connect-analytics
-cp .env.example .env          # configure AIRFLOW_UID=$(id -u)
-docker compose up -d          # sobe Airflow + Spark + Postgres
-```
-
-- **Airflow UI:** `http://localhost:8080` (admin / admin)
-- **Spark UI:** `http://localhost:8082`
-
-### Opção B — Local com Poetry
-
-#### Pré-requisitos
-
-- Python 3.10+
-- Java 17+ (necessário para PySpark + Iceberg)
-- Poetry
-
-### 2. Instalação
-
-```bash
-git clone https://github.com/paco-saavedra/gru-connect-analytics.git
-cd gru-connect-analytics
-
-# Copiar e configurar variáveis de ambiente
 cp .env.example .env
-# Editar GRU_BASE_DIR no .env com o path do projeto
-
-# Instalar dependências
-poetry install
 ```
 
-### 3. Configurar variável de ambiente
+Edit `.env` if needed (defaults work out of the box):
 
 ```bash
-export GRU_BASE_DIR=$(pwd)
+AIRFLOW_UID=1000          # your Linux UID — run: echo $(id -u)
+POSTGRES_PASSWORD=airflow
+ANAC_ANO=2025             # reference year for ingestion
+ANAC_MES=01               # reference month for ingestion
 ```
 
-### 4. Subir Airflow
+### 2. Start the stack
 
 ```bash
-export AIRFLOW_HOME=$(pwd)/airflow
-poetry run airflow standalone
+docker compose up -d
 ```
 
-Acesse: `http://localhost:8080` (usuário: `admin`)
+> **Note:** First startup takes ~5 minutes while Airflow initializes the database and scans providers. Subsequent restarts are much faster.
 
-### 5. Executar manualmente (sem Airflow)
+### 3. Access the UIs
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| **Airflow UI** | [http://localhost:8080](http://localhost:8080) | admin / admin |
+| **Spark Master UI** | [http://localhost:8082](http://localhost:8082) | — |
+
+### 4. Run the pipeline
+
+1. Open the Airflow UI at `http://localhost:8080`
+2. Unpause `dag_bronze_ingestion` and trigger it manually
+3. `dag_silver_transform` will start automatically once Bronze completes (ExternalTaskSensor)
+4. `dag_gold_dbt_cosmos` will start automatically once Silver completes
+
+### 5. Generate dbt documentation
 
 ```bash
-# Bronze
-python spark_jobs/ingestion_vra.py --ano 2025 --mes 01
-
-# Silver
-python spark_jobs/silver_transformation.py
-
-# Gold (dbt)
-cd dbt_gru
-poetry run dbt run --profiles-dir . --full-refresh
-
-# Inspecionar resultados
-python spark_jobs/inspect_gold.py
+docker compose exec airflow-webserver bash -c \
+  "cd /opt/airflow/dbt_gru && dbt docs generate --profiles-dir . && dbt docs serve --port 8081"
 ```
 
-### 6. Documentação dbt
+Access at [http://localhost:8081](http://localhost:8081) — includes the full lineage graph.
+
+### 6. Stop the stack
 
 ```bash
-cd dbt_gru
-poetry run dbt docs generate
-poetry run dbt docs serve --port 8081
+docker compose down          # stop and remove containers
+docker compose down -v       # also remove volumes (reset all data)
 ```
-
-Acesse: `http://localhost:8081` — inclui grafo de linhagem completo.
 
 ---
 
-## Modelo de Dados (Gold — Star Schema)
+## Services
+
+| Service | Description | Ports |
+|---------|-------------|-------|
+| `postgres` | Airflow metadata database (PostgreSQL 15) | 5432 (internal) |
+| `airflow-init` | One-shot: DB migration, admin user, Spark connection | — |
+| `airflow-webserver` | Airflow UI | 8080 |
+| `airflow-scheduler` | DAG scheduling and task execution | — |
+| `spark-master` | Apache Spark 3.5 master node | 7077, 8082 |
+| `spark-worker` | Spark worker (2 cores, 2 GB RAM) | — |
+
+---
+
+## Data Model (Gold — Star Schema)
 
 ```
 dim_calendario ─┐
@@ -219,8 +219,8 @@ dim_empresas   ─┼──► fato_conexoes
 
 ---
 
-## Autor
+## Author
 
-**Paco de Oliveira Saavedra** — [GitHub](https://github.com/paco-saavedra)
+**Paco de Oliveira Saavedra** — [GitHub](https://github.com/Pacodeoliv)
 
-Projeto de portfólio avançado de Engenharia de Dados, demonstrando pipeline E2E com dados reais do setor de aviação civil brasileiro.
+Advanced Data Engineering portfolio project, demonstrating an E2E pipeline with real data from the Brazilian civil aviation sector.
