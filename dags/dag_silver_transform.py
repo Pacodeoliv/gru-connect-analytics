@@ -6,7 +6,6 @@ from pathlib import Path
 
 from airflow.operators.bash import BashOperator
 from airflow.operators.empty import EmptyOperator
-from airflow.sensors.external_task import ExternalTaskSensor
 
 from airflow import DAG
 
@@ -24,23 +23,14 @@ with DAG(
     dag_id="dag_silver_transform",
     default_args=DEFAULT_ARGS,
     description="Silver Layer: typing and cleaning of GRU flight data via PySpark.",
-    schedule="0 10 15 * *",
+    schedule=None,
     start_date=datetime(2025, 1, 1),
     catchup=False,
-    is_paused_upon_creation=True,
+    is_paused_upon_creation=False,
     tags=["gru", "silver", "spark"],
 ) as dag:
 
     start = EmptyOperator(task_id="start")
-
-    wait_bronze = ExternalTaskSensor(
-        task_id="wait_bronze",
-        external_dag_id="dag_bronze_ingestion",
-        external_task_id="end",
-        timeout=3600,
-        poke_interval=60,
-        mode="reschedule",
-    )
 
     transform_silver = BashOperator(
         task_id="transform_silver",
@@ -54,4 +44,4 @@ with DAG(
 
     end = EmptyOperator(task_id="end")
 
-    start >> wait_bronze >> transform_silver >> end
+    start >> transform_silver >> end

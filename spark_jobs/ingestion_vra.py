@@ -65,7 +65,8 @@ def build_spark() -> SparkSession:
     )
 
 
-def download_vra_anac(ano: str, mes: str) -> Path:
+def download_vra_anac(ano: str, mes: str):
+    """Download VRA CSV from ANAC. Returns Path on success, None if not available (404)."""
     CSV_TEMP_DIR.mkdir(parents=True, exist_ok=True)
     mes_pad = mes.zfill(2)
     url = f"https://siros.anac.gov.br/siros/registros/diversos/vra/{ano}/VRA_{ano}_{mes_pad}.csv"
@@ -79,6 +80,10 @@ def download_vra_anac(ano: str, mes: str) -> Path:
         log.info("Downloaded: %d bytes", len(response.content))
         return file_path
 
+    if response.status_code == 404:
+        log.warning("ANAC data not available yet for %s/%s (HTTP 404) — skipping", ano, mes_pad)
+        return None
+
     raise RuntimeError(f"HTTP {response.status_code} fetching VRA {ano}/{mes_pad}: {url}")
 
 
@@ -90,6 +95,10 @@ def run_ingestion(ano: str, mes: str) -> None:
     try:
         csv_path = download_vra_anac(ano, mes)
 
+        if csv_path is None:
+            log.info("No data for %s/%s — nothing to ingest", ano, mes)
+            return
+
         df_raw = (
             spark.read.format("csv")
             .option("header", "true")
@@ -99,11 +108,26 @@ def run_ingestion(ano: str, mes: str) -> None:
             .load(str(csv_path))
         )
         log.info("Records read from CSV: %d", df_raw.count())
+        log.info("CSV columns: %s", df_raw.columns)
+
+        # Robust column rename: ANAC CSV headers may have encoding artifacts
+        # (e.g. "Ã©" instead of "é"). We build a normalized lookup to match.
+        import unicodedata
+
+        def normalize(s: str) -> str:
+            """Strip accents, lowercase, collapse whitespace."""
+            nfkd = unicodedata.normalize("NFKD", s)
+            ascii_only = "".join(c for c in nfkd if not unicodedata.combining(c))
+            return " ".join(ascii_only.lower().split())
+
+        # Build normalized key -> desired alias
+        norm_map = {normalize(k): v for k, v in ANAC_COLUMN_MAP.items()}
 
         df_renamed = df_raw
-        for col_original, col_alias in ANAC_COLUMN_MAP.items():
-            if col_original in df_raw.columns:
-                df_renamed = df_renamed.withColumnRenamed(col_original, col_alias)
+        for col_name in df_raw.columns:
+            norm_key = normalize(col_name)
+            if norm_key in norm_map:
+                df_renamed = df_renamed.withColumnRenamed(col_name, norm_map[norm_key])
 
         df_gru = df_renamed.filter(
             (F.col("cd_icao_origem") == "SBGR") | (F.col("cd_icao_destino") == "SBGR")

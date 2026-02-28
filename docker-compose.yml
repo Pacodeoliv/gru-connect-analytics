@@ -112,6 +112,17 @@ services:
       - spark-master
     restart: unless-stopped
 
+  # ─── Streamlit Dashboard (localhost:8501) ────────────────────────────────
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
 volumes:
   postgres-db:
   airflow-logs:
