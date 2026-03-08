@@ -26,10 +26,14 @@ The success of an airport hub depends on the **Minimum Connect Time (MCT)** — 
 
 ## Architecture
 
-<!-- Replace this with your architecture diagram image:
-![Architecture](docs/architecture.png)
+<!-- Add your architecture diagram below by replacing the placeholder:
+     1. Save your image to docs/architecture.png (or any path you prefer)
+     2. Replace the img tag with: ![Architecture](docs/architecture.png)
 -->
-<p align="center"><em>Architecture diagram — coming soon</em></p>
+<p align="center">
+  <img src="docs/architecture.png" alt="Architecture Diagram" width="800"/>
+  <!-- ☝️ Replace docs/architecture.png with your actual image path -->
+</p>
 
 ```mermaid
 graph TD
@@ -38,12 +42,12 @@ graph TD
     end
 
     subgraph Airflow["Orchestration — Apache Airflow 2.9"]
-        DAG_B["dag_bronze_ingestion (monthly)"]
-        DAG_S["dag_silver_transform (ExternalTaskSensor)"]
+        DAG_B["dag_bronze_ingestion"]
+        DAG_S["dag_silver_transform"]
         DAG_G["dag_gold_dbt_cosmos (Astronomer Cosmos)"]
         DAG_E["export_gold (Parquet for Dashboard)"]
-        DAG_B -->|ExternalTaskSensor| DAG_S
-        DAG_S -->|ExternalTaskSensor| DAG_G
+        DAG_B --> DAG_S
+        DAG_S --> DAG_G
         DAG_G --> DAG_E
     end
 
@@ -76,16 +80,16 @@ graph TD
 
 ### Why Astronomer Cosmos?
 
-Cosmos converts the dbt dependency graph directly into individual Airflow tasks. Each dbt model (`stg_anac_vra`, `dim_aeroportos`, `fato_conexoes`, etc.) has its own log, retry, and state in Airflow — enabling granular debugging and full observability.
+Cosmos converts the dbt dependency graph directly into individual Airflow tasks. Each dbt model (`dim_aeroportos`, `dim_empresas`, `dim_calendario`, `fato_conexoes`) has its own log, retry, and state in Airflow — enabling granular debugging and full observability.
 
 ```
 # Without Cosmos: 1 BashOperator "dbt run"
 [dbt_run_gold]
 
 # With Cosmos: real lineage in Airflow
-[stg_anac_vra] → [dim_aeroportos] → [fato_conexoes]
-              → [dim_empresas]   ↗
-              → [dim_calendario] ↗
+  [dim_aeroportos] → [fato_conexoes]
+  [dim_empresas]   ↗
+  [dim_calendario] ↗
 ```
 
 ---
@@ -112,7 +116,7 @@ The project includes an interactive **Streamlit dashboard** that visualizes conn
 |-------|-----------|
 | Ingestion & Processing | PySpark 3.5 |
 | Storage Format | **Apache Iceberg 1.5** (ACID, Time Travel, Schema Evolution) |
-| Analytical Modeling | dbt-spark 1.8 (incremental merge) |
+| Analytical Modeling | dbt-spark 1.8 |
 | Orchestration | Apache Airflow 2.9 |
 | dbt-Airflow Integration | **Astronomer Cosmos 1.7** |
 | Data Quality | dbt tests (not_null, unique, accepted_values) |
@@ -130,7 +134,7 @@ gru-connect-analytics/
 ├── dags/
 │   ├── dag_bronze_ingestion.py   # Bronze: ANAC download + PySpark ingestion
 │   ├── dag_silver_transform.py   # Silver: typing and cleaning via PySpark
-│   └── dag_gold_dbt_cosmos.py    # Gold: dbt via Cosmos + export to Parquet
+│   └── dag_gold_dbt_cosmos.py    # Gold: dbt models via Cosmos + export to Parquet
 ├── spark_jobs/
 │   ├── ingestion_vra.py          # Download and Bronze ingestion logic
 │   ├── silver_transformation.py  # Silver transformations
@@ -142,7 +146,7 @@ gru-connect-analytics/
 ├── dbt_gru/
 │   └── models/
 │       ├── staging/
-│       │   ├── stg_anac_vra.sql  # Staging VRA
+│       │   ├── stg_anac_vra.sql  # Staging view over Silver Iceberg table
 │       │   └── schema.yml        # Quality tests
 │       └── marts/
 │           ├── fato_conexoes.sql
@@ -153,10 +157,11 @@ gru-connect-analytics/
 ├── scripts/
 │   ├── docker-init.sh            # Bootstrap: DB migrate + admin user + Spark connection
 │   └── backfill.sh               # Multi-month VRA ingestion utility
+├── docs/
+│   └── architecture.png          # ← Add your architecture diagram here
 ├── Dockerfile.airflow            # Airflow image (Java + PySpark + dbt + Cosmos)
 ├── Dockerfile.streamlit          # Dashboard image (lightweight Python)
 ├── docker-compose.yml            # Full stack: Airflow + Spark + Postgres + Streamlit
-├── Makefile                      # Command shortcuts (make up, make down, etc.)
 ├── .env.example                  # Required environment variables
 └── pyproject.toml                # Python dependencies
 ```
@@ -182,18 +187,15 @@ Edit `.env` if needed (defaults work out of the box):
 ```bash
 AIRFLOW_UID=1000          # your Linux UID — run: echo $(id -u)
 POSTGRES_PASSWORD=airflow
-ANAC_ANO=2025             # reference year for ingestion
-ANAC_MES=01               # reference month for ingestion
 ```
 
 ### 2. Start the stack
 
 ```bash
-make up
-# or: docker compose up -d
+docker compose up -d
 ```
 
-> **Note:** First startup takes ~5 minutes while Airflow initializes the database and scans providers. Subsequent restarts are much faster.
+> **Note:** First startup takes ~5 minutes while Airflow initialises the database, downloads the Iceberg JAR, and scans providers. Subsequent restarts are much faster.
 
 ### 3. Access the UIs
 
@@ -203,26 +205,35 @@ make up
 | **Airflow UI** | [http://localhost:8080](http://localhost:8080) | admin / admin |
 | **Spark Master UI** | [http://localhost:8082](http://localhost:8082) | — |
 
-### 4. Run the pipeline
+### 4. Verify the Spark connection
+
+The `spark_default` connection is created automatically on first startup (pointing to the Thrift Server at `spark-master:10000`). If the Gold DAG fails with a connection error, verify it manually:
+
+1. Go to **Admin → Connections** in the Airflow UI
+2. Find `spark_default` and click **Edit**
+3. Make sure the values are:
+
+| Field | Value |
+|-------|-------|
+| **Connection Type** | Spark |
+| **Host** | `spark-master` |
+| **Port** | `10000` |
+
+> This is the Spark **Thrift Server** port used by dbt/Cosmos to submit SQL. It is different from the Spark master submit port (7077).
+
+### 5. Run the pipeline
 
 1. Open the Airflow UI at `http://localhost:8080`
-2. Unpause `dag_bronze_ingestion` and trigger it manually
-3. `dag_silver_transform` starts automatically once Bronze completes (ExternalTaskSensor)
-4. `dag_gold_dbt_cosmos` starts automatically once Silver completes
+2. Trigger `dag_bronze_ingestion` manually (downloads last 12 months of ANAC VRA data)
+3. Once Bronze completes, trigger `dag_silver_transform` (types and cleans the data)
+4. Once Silver completes, trigger `dag_gold_dbt_cosmos` (runs dbt models + exports to Parquet)
 5. The `export_gold` task runs last — once done, the **Dashboard** is populated
 
-### 5. Makefile shortcuts
-
-```bash
-make up        # Start the full stack
-make down      # Stop all containers
-make build     # Rebuild Docker images
-make logs      # Follow container logs
-make ps        # Show running containers
-make restart   # Stop + start
-make reset     # Stop + remove all data (fresh start)
-make ingest    # Trigger the Bronze DAG from CLI
-```
+> You can also trigger DAGs from the CLI:
+> ```bash
+> docker compose exec airflow-webserver \
+>   airflow dags trigger dag_bronze_ingestion
+> ```
 
 ### 6. Generate dbt documentation
 
@@ -243,7 +254,7 @@ Access at [http://localhost:8081](http://localhost:8081) — includes the full l
 | `airflow-init` | One-shot: DB migration, admin user, Spark connection | — |
 | `airflow-webserver` | Airflow UI | 8080 |
 | `airflow-scheduler` | DAG scheduling and task execution | — |
-| `spark-master` | Apache Spark 3.5 master node | 7077, 8082 |
+| `spark-master` | Apache Spark 3.5 master node + Thrift Server | 7077, 8082, 10000 |
 | `spark-worker` | Spark worker (2 cores, 2 GB RAM) | — |
 | `streamlit` | Interactive analytics dashboard | 8501 |
 

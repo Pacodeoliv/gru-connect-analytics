@@ -1,0 +1,109 @@
+{
+  "format-version" : 2,
+  "table-uuid" : "f5da4d0a-0249-4562-b5a4-5f725a065852",
+  "location" : "/opt/airflow/warehouse/gold/dim_calendario",
+  "last-sequence-number" : 1,
+  "last-updated-ms" : 1772944414855,
+  "last-column-id" : 9,
+  "current-schema-id" : 0,
+  "schemas" : [ {
+    "type" : "struct",
+    "schema-id" : 0,
+    "fields" : [ {
+      "id" : 1,
+      "name" : "sk_data",
+      "required" : false,
+      "type" : "date"
+    }, {
+      "id" : 2,
+      "name" : "nr_ano",
+      "required" : false,
+      "type" : "int"
+    }, {
+      "id" : 3,
+      "name" : "nr_mes",
+      "required" : false,
+      "type" : "int"
+    }, {
+      "id" : 4,
+      "name" : "nr_dia",
+      "required" : false,
+      "type" : "int"
+    }, {
+      "id" : 5,
+      "name" : "nr_trimestre",
+      "required" : false,
+      "type" : "int"
+    }, {
+      "id" : 6,
+      "name" : "nm_dia_semana",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 7,
+      "name" : "nm_mes",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 8,
+      "name" : "fl_fim_de_semana",
+      "required" : false,
+      "type" : "boolean"
+    }, {
+      "id" : 9,
+      "name" : "nr_semana_ano",
+      "required" : false,
+      "type" : "int"
+    } ]
+  } ],
+  "default-spec-id" : 0,
+  "partition-specs" : [ {
+    "spec-id" : 0,
+    "fields" : [ ]
+  } ],
+  "last-partition-id" : 999,
+  "default-sort-order-id" : 0,
+  "sort-orders" : [ {
+    "order-id" : 0,
+    "fields" : [ ]
+  } ],
+  "properties" : {
+    "owner" : "default",
+    "write.parquet.compression-codec" : "zstd"
+  },
+  "current-snapshot-id" : 3173246303172972700,
+  "refs" : {
+    "main" : {
+      "snapshot-id" : 3173246303172972700,
+      "type" : "branch"
+    }
+  },
+  "snapshots" : [ {
+    "sequence-number" : 1,
+    "snapshot-id" : 3173246303172972700,
+    "timestamp-ms" : 1772944414855,
+    "summary" : {
+      "operation" : "append",
+      "spark.app.id" : "app-20260308042725-0000",
+      "added-data-files" : "1",
+      "added-records" : "62",
+      "added-files-size" : "3064",
+      "changed-partition-count" : "1",
+      "total-records" : "62",
+      "total-files-size" : "3064",
+      "total-data-files" : "1",
+      "total-delete-files" : "0",
+      "total-position-deletes" : "0",
+      "total-equality-deletes" : "0"
+    },
+    "manifest-list" : "/opt/airflow/warehouse/gold/dim_calendario/metadata/snap-3173246303172972700-1-e79e4055-b5d2-4658-814c-ff04baf059ba.avro",
+    "schema-id" : 0
+  } ],
+  "statistics" : [ ],
+  "partition-statistics" : [ ],
+  "snapshot-log" : [ {
+    "timestamp-ms" : 1772944414855,
+    "snapshot-id" : 3173246303172972700
+  } ],
+  "metadata-log" : [ ]
+}

@@ -1,0 +1,134 @@
+{
+  "format-version" : 2,
+  "table-uuid" : "0b5d3fee-9c2b-409d-a183-47c19d08c465",
+  "location" : "/opt/airflow/warehouse/silver/stg_anac_vra",
+  "last-sequence-number" : 1,
+  "last-updated-ms" : 1772943626035,
+  "last-column-id" : 12,
+  "current-schema-id" : 0,
+  "schemas" : [ {
+    "type" : "struct",
+    "schema-id" : 0,
+    "fields" : [ {
+      "id" : 1,
+      "name" : "cd_icao_empresa",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 2,
+      "name" : "nr_voo",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 3,
+      "name" : "cd_icao_origem",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 4,
+      "name" : "cd_icao_destino",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 5,
+      "name" : "dt_partida_prevista",
+      "required" : false,
+      "type" : "timestamptz"
+    }, {
+      "id" : 6,
+      "name" : "dt_partida_real",
+      "required" : false,
+      "type" : "timestamptz"
+    }, {
+      "id" : 7,
+      "name" : "dt_chegada_prevista",
+      "required" : false,
+      "type" : "timestamptz"
+    }, {
+      "id" : 8,
+      "name" : "dt_chegada_real",
+      "required" : false,
+      "type" : "timestamptz"
+    }, {
+      "id" : 9,
+      "name" : "nm_situacao_voo",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 10,
+      "name" : "nr_ano",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 11,
+      "name" : "nr_mes",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 12,
+      "name" : "vl_atraso_chegada_min",
+      "required" : false,
+      "type" : "double"
+    } ]
+  } ],
+  "default-spec-id" : 0,
+  "partition-specs" : [ {
+    "spec-id" : 0,
+    "fields" : [ {
+      "name" : "nr_ano",
+      "transform" : "identity",
+      "source-id" : 10,
+      "field-id" : 1000
+    }, {
+      "name" : "nr_mes",
+      "transform" : "identity",
+      "source-id" : 11,
+      "field-id" : 1001
+    } ]
+  } ],
+  "last-partition-id" : 1001,
+  "default-sort-order-id" : 0,
+  "sort-orders" : [ {
+    "order-id" : 0,
+    "fields" : [ ]
+  } ],
+  "properties" : {
+    "owner" : "default",
+    "write.parquet.compression-codec" : "zstd"
+  },
+  "current-snapshot-id" : 5715703056512878756,
+  "refs" : {
+    "main" : {
+      "snapshot-id" : 5715703056512878756,
+      "type" : "branch"
+    }
+  },
+  "snapshots" : [ {
+    "sequence-number" : 1,
+    "snapshot-id" : 5715703056512878756,
+    "timestamp-ms" : 1772943626035,
+    "summary" : {
+      "operation" : "append",
+      "spark.app.id" : "local-1772943615630",
+      "added-data-files" : "2",
+      "added-records" : "47109",
+      "added-files-size" : "821855",
+      "changed-partition-count" : "2",
+      "total-records" : "47109",
+      "total-files-size" : "821855",
+      "total-data-files" : "2",
+      "total-delete-files" : "0",
+      "total-position-deletes" : "0",
+      "total-equality-deletes" : "0"
+    },
+    "manifest-list" : "/opt/airflow/warehouse/silver/stg_anac_vra/metadata/snap-5715703056512878756-1-70cd1b07-1912-43c1-9fe7-36888d246f2e.avro",
+    "schema-id" : 0
+  } ],
+  "statistics" : [ ],
+  "partition-statistics" : [ ],
+  "snapshot-log" : [ {
+    "timestamp-ms" : 1772943626035,
+    "snapshot-id" : 5715703056512878756
+  } ],
+  "metadata-log" : [ ]
+}

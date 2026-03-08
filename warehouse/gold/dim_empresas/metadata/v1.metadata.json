@@ -1,0 +1,79 @@
+{
+  "format-version" : 2,
+  "table-uuid" : "d6bbaf3a-f089-4bc9-8979-6df3d61e2fd1",
+  "location" : "/opt/airflow/warehouse/gold/dim_empresas",
+  "last-sequence-number" : 1,
+  "last-updated-ms" : 1772944413950,
+  "last-column-id" : 3,
+  "current-schema-id" : 0,
+  "schemas" : [ {
+    "type" : "struct",
+    "schema-id" : 0,
+    "fields" : [ {
+      "id" : 1,
+      "name" : "cd_icao_empresa",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 2,
+      "name" : "nm_empresa",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 3,
+      "name" : "cd_tipo_empresa",
+      "required" : false,
+      "type" : "string"
+    } ]
+  } ],
+  "default-spec-id" : 0,
+  "partition-specs" : [ {
+    "spec-id" : 0,
+    "fields" : [ ]
+  } ],
+  "last-partition-id" : 999,
+  "default-sort-order-id" : 0,
+  "sort-orders" : [ {
+    "order-id" : 0,
+    "fields" : [ ]
+  } ],
+  "properties" : {
+    "owner" : "default",
+    "write.parquet.compression-codec" : "zstd"
+  },
+  "current-snapshot-id" : 1476080398231627025,
+  "refs" : {
+    "main" : {
+      "snapshot-id" : 1476080398231627025,
+      "type" : "branch"
+    }
+  },
+  "snapshots" : [ {
+    "sequence-number" : 1,
+    "snapshot-id" : 1476080398231627025,
+    "timestamp-ms" : 1772944413950,
+    "summary" : {
+      "operation" : "append",
+      "spark.app.id" : "app-20260308042725-0000",
+      "added-data-files" : "1",
+      "added-records" : "57",
+      "added-files-size" : "1554",
+      "changed-partition-count" : "1",
+      "total-records" : "57",
+      "total-files-size" : "1554",
+      "total-data-files" : "1",
+      "total-delete-files" : "0",
+      "total-position-deletes" : "0",
+      "total-equality-deletes" : "0"
+    },
+    "manifest-list" : "/opt/airflow/warehouse/gold/dim_empresas/metadata/snap-1476080398231627025-1-20411e6c-6f01-47ad-986c-bf247909568a.avro",
+    "schema-id" : 0
+  } ],
+  "statistics" : [ ],
+  "partition-statistics" : [ ],
+  "snapshot-log" : [ {
+    "timestamp-ms" : 1772944413950,
+    "snapshot-id" : 1476080398231627025
+  } ],
+  "metadata-log" : [ ]
+}

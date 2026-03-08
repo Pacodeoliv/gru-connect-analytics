@@ -13,12 +13,12 @@ airflow users create \
   --firstname Admin --lastname User \
   --role Admin --email admin@example.com || true
 
-echo "[docker-init] Setting up spark_default connection..."
+echo "[docker-init] Setting up spark_default connection (Thrift Server for dbt/Cosmos)..."
 airflow connections delete spark_default 2>/dev/null || true
 airflow connections add spark_default \
   --conn-type spark \
-  --conn-host "spark://spark-master" \
-  --conn-port 7077 \
+  --conn-host "spark-master" \
+  --conn-port 10000 \
   --conn-extra '{"deploy-mode": "client"}'
 
 echo "[docker-init] Done."

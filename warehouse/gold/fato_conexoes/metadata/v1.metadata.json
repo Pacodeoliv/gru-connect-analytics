@@ -1,0 +1,134 @@
+{
+  "format-version" : 2,
+  "table-uuid" : "ace2dc53-ee31-4d3f-a2d1-d643ca1f07f0",
+  "location" : "/opt/airflow/warehouse/gold/fato_conexoes",
+  "last-sequence-number" : 1,
+  "last-updated-ms" : 1772944156464,
+  "last-column-id" : 12,
+  "current-schema-id" : 0,
+  "schemas" : [ {
+    "type" : "struct",
+    "schema-id" : 0,
+    "fields" : [ {
+      "id" : 1,
+      "name" : "cd_icao_empresa",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 2,
+      "name" : "nr_voo_chegada",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 3,
+      "name" : "nr_voo_partida",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 4,
+      "name" : "cd_icao_origem_chegada",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 5,
+      "name" : "cd_icao_destino_partida",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 6,
+      "name" : "dt_chegada_real",
+      "required" : false,
+      "type" : "timestamptz"
+    }, {
+      "id" : 7,
+      "name" : "dt_partida_prevista",
+      "required" : false,
+      "type" : "timestamptz"
+    }, {
+      "id" : 8,
+      "name" : "nr_ano",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 9,
+      "name" : "nr_mes",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 10,
+      "name" : "janela_conexao_min",
+      "required" : false,
+      "type" : "double"
+    }, {
+      "id" : 11,
+      "name" : "desc_status_risco",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 12,
+      "name" : "dt_processamento",
+      "required" : false,
+      "type" : "timestamptz"
+    } ]
+  } ],
+  "default-spec-id" : 0,
+  "partition-specs" : [ {
+    "spec-id" : 0,
+    "fields" : [ {
+      "name" : "nr_ano",
+      "transform" : "identity",
+      "source-id" : 8,
+      "field-id" : 1000
+    }, {
+      "name" : "nr_mes",
+      "transform" : "identity",
+      "source-id" : 9,
+      "field-id" : 1001
+    } ]
+  } ],
+  "last-partition-id" : 1001,
+  "default-sort-order-id" : 0,
+  "sort-orders" : [ {
+    "order-id" : 0,
+    "fields" : [ ]
+  } ],
+  "properties" : {
+    "owner" : "default",
+    "write.parquet.compression-codec" : "zstd"
+  },
+  "current-snapshot-id" : 4639008526207093675,
+  "refs" : {
+    "main" : {
+      "snapshot-id" : 4639008526207093675,
+      "type" : "branch"
+    }
+  },
+  "snapshots" : [ {
+    "sequence-number" : 1,
+    "snapshot-id" : 4639008526207093675,
+    "timestamp-ms" : 1772944156464,
+    "summary" : {
+      "operation" : "append",
+      "spark.app.id" : "app-20260308042725-0000",
+      "added-data-files" : "2",
+      "added-records" : "474361",
+      "added-files-size" : "1612211",
+      "changed-partition-count" : "2",
+      "total-records" : "474361",
+      "total-files-size" : "1612211",
+      "total-data-files" : "2",
+      "total-delete-files" : "0",
+      "total-position-deletes" : "0",
+      "total-equality-deletes" : "0"
+    },
+    "manifest-list" : "/opt/airflow/warehouse/gold/fato_conexoes/metadata/snap-4639008526207093675-1-4a2f5cb0-0ac8-44e9-8ccc-039d5fe04596.avro",
+    "schema-id" : 0
+  } ],
+  "statistics" : [ ],
+  "partition-statistics" : [ ],
+  "snapshot-log" : [ {
+    "timestamp-ms" : 1772944156464,
+    "snapshot-id" : 4639008526207093675
+  } ],
+  "metadata-log" : [ ]
+}
