@@ -31,8 +31,7 @@ The success of an airport hub depends on the **Minimum Connect Time (MCT)** — 
      2. Replace the img tag with: ![Architecture](docs/architecture.png)
 -->
 <p align="center">
-  <img src="docs/architecture.png" alt="Architecture Diagram" width="800"/>
-  <!-- ☝️ Replace docs/architecture.png with your actual image path -->
+  <img src="https://github.com/user-attachments/assets/75358e16-ae02-4960-ad62-40ae78348812" width="100%" alt="Arquitetura do Projeto">
 </p>
 
 ```mermaid
