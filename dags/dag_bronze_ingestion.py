@@ -31,7 +31,10 @@ for i in range(1, 13):
 with DAG(
     dag_id="dag_bronze_ingestion",
     default_args=DEFAULT_ARGS,
-    description="Bronze Layer: downloads the last 12 months of ANAC VRA data and ingests into Iceberg.",
+    description=(
+        "Bronze Layer: downloads the last 12 months of ANAC VRA data"
+        " and ingests into Iceberg."
+    ),
     schedule=None,
     start_date=datetime(2025, 1, 1),
     catchup=False,
