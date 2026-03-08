@@ -1,8 +1,8 @@
 {{ config(materialized='view') }}
 
 WITH source_data AS (
-    -- env_var('GRU_BASE_DIR') elimina paths hardcoded — defina no seu .env
-    SELECT * FROM parquet.`{{ env_var('GRU_BASE_DIR') }}/data/silver/stg_anac_vra`
+    -- Lê da tabela Iceberg criada pelo job silver_transformation.py
+    SELECT * FROM local.silver.stg_anac_vra
 )
 
 SELECT

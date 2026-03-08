@@ -4,8 +4,8 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from airflow.operators.bash import BashOperator
 from airflow.operators.empty import EmptyOperator
-from airflow.sensors.external_task import ExternalTaskSensor
 
 from airflow import DAG
 
@@ -31,25 +31,27 @@ with DAG(
     dag_id="dag_gold_dbt_cosmos",
     default_args=DEFAULT_ARGS,
     description="Gold Layer: dbt models via Astronomer Cosmos (each model = Airflow task).",
-    schedule="0 12 15 * *",
+    schedule=None,
     start_date=datetime(2025, 1, 1),
     catchup=False,
-    is_paused_upon_creation=True,
+    is_paused_upon_creation=False,
     tags=["gru", "gold", "dbt", "cosmos"],
 ) as dag:
 
     start = EmptyOperator(task_id="start")
 
-    wait_silver = ExternalTaskSensor(
-        task_id="wait_silver",
-        external_dag_id="dag_silver_transform",
-        external_task_id="end",
-        timeout=3600,
-        poke_interval=60,
-        mode="reschedule",
-    )
-
     end = EmptyOperator(task_id="end")
+
+    # Export Gold Iceberg tables to Parquet for the Streamlit dashboard
+    export_gold = BashOperator(
+        task_id="export_gold",
+        bash_command=(
+            f"cd {PROJECT_DIR} && "
+            "python spark_jobs/export_gold.py"
+        ),
+        env={"GRU_BASE_DIR": str(PROJECT_DIR)},
+        do_xcom_push=False,
+    )
 
     if COSMOS_AVAILABLE:
         dbt_gold = DbtTaskGroup(
@@ -69,7 +71,7 @@ with DAG(
                 ),
             ),
             render_config=RenderConfig(
-                select=["path:models/staging", "path:models/marts"],
+                select=["path:models/marts"],
                 dbt_executable_path="dbt",
             ),
             operator_args={
@@ -78,11 +80,9 @@ with DAG(
             },
         )
 
-        start >> wait_silver >> dbt_gold >> end
+        start >> dbt_gold >> export_gold >> end
 
     else:
-        from airflow.operators.bash import BashOperator
-
         dbt_run_fallback = BashOperator(
             task_id="dbt_run_gold_fallback",
             bash_command=(
@@ -92,4 +92,4 @@ with DAG(
             env={"GRU_BASE_DIR": str(PROJECT_DIR)},
         )
 
-        start >> wait_silver >> dbt_run_fallback >> end
+        start >> dbt_run_fallback >> export_gold >> end

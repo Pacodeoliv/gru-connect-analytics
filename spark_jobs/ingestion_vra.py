@@ -65,7 +65,8 @@ def build_spark() -> SparkSession:
     )
 
 
-def download_vra_anac(ano: str, mes: str) -> Path:
+def download_vra_anac(ano: str, mes: str):
+    """Download VRA CSV from ANAC. Returns Path on success, None if not available (404)."""
     CSV_TEMP_DIR.mkdir(parents=True, exist_ok=True)
     mes_pad = mes.zfill(2)
     url = f"https://siros.anac.gov.br/siros/registros/diversos/vra/{ano}/VRA_{ano}_{mes_pad}.csv"
@@ -79,6 +80,10 @@ def download_vra_anac(ano: str, mes: str) -> Path:
         log.info("Downloaded: %d bytes", len(response.content))
         return file_path
 
+    if response.status_code == 404:
+        log.warning("ANAC data not available yet for %s/%s (HTTP 404) — skipping", ano, mes_pad)
+        return None
+
     raise RuntimeError(f"HTTP {response.status_code} fetching VRA {ano}/{mes_pad}: {url}")
 
 
@@ -90,15 +95,25 @@ def run_ingestion(ano: str, mes: str) -> None:
     try:
         csv_path = download_vra_anac(ano, mes)
 
+        if csv_path is None:
+            log.info("No data for %s/%s — nothing to ingest", ano, mes)
+            return
+
+        # Re-encode CSV from ISO-8859-1 to UTF-8 so PySpark reads headers correctly
+        log.info("Re-encoding CSV to UTF-8")
+        raw_bytes = csv_path.read_bytes()
+        csv_path.write_text(raw_bytes.decode("iso-8859-1"), encoding="utf-8")
+
         df_raw = (
             spark.read.format("csv")
             .option("header", "true")
             .option("sep", ";")
-            .option("encoding", "ISO-8859-1")
+            .option("encoding", "UTF-8")
             .option("inferSchema", "false")
             .load(str(csv_path))
         )
         log.info("Records read from CSV: %d", df_raw.count())
+        log.info("CSV columns: %s", df_raw.columns)
 
         df_renamed = df_raw
         for col_original, col_alias in ANAC_COLUMN_MAP.items():
