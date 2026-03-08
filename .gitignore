@@ -30,6 +30,10 @@ metastore_db/
 *.csv
 derby.log
 
+# Exceção: dados Gold exportados para o Streamlit Cloud (demo estático)
+!data/gold/
+!data/gold/*.parquet
+
 # ==========================================
 # dbt
 # ==========================================

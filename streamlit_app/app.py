@@ -17,7 +17,11 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 # Paths — inside Docker the data volume is mounted at /app/data
 # ---------------------------------------------------------------------------
-GOLD_DIR = Path("/app/data/gold")
+import os
+
+# Works in Docker (GRU_BASE_DIR=/app) and on Streamlit Cloud (relative to repo root)
+_BASE = Path(os.environ.get("GRU_BASE_DIR", Path(__file__).parent.parent))
+GOLD_DIR = _BASE / "data" / "gold"
 
 # ---------------------------------------------------------------------------
 # Custom CSS
