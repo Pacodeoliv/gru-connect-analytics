@@ -50,4 +50,4 @@ Thumbs.db
 # Credenciais & Ambientes (SEGURANÇA)
 # ==========================================
 .env
-.python-version
+.python-versionwarehouse/
