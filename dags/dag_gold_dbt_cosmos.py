@@ -71,7 +71,7 @@ with DAG(
                 ),
             ),
             render_config=RenderConfig(
-                select=["path:models/staging", "path:models/marts"],
+                select=["path:models/marts"],
                 dbt_executable_path="dbt",
             ),
             operator_args={

@@ -99,35 +99,26 @@ def run_ingestion(ano: str, mes: str) -> None:
             log.info("No data for %s/%s — nothing to ingest", ano, mes)
             return
 
+        # Re-encode CSV from ISO-8859-1 to UTF-8 so PySpark reads headers correctly
+        log.info("Re-encoding CSV to UTF-8")
+        raw_bytes = csv_path.read_bytes()
+        csv_path.write_text(raw_bytes.decode("iso-8859-1"), encoding="utf-8")
+
         df_raw = (
             spark.read.format("csv")
             .option("header", "true")
             .option("sep", ";")
-            .option("encoding", "ISO-8859-1")
+            .option("encoding", "UTF-8")
             .option("inferSchema", "false")
             .load(str(csv_path))
         )
         log.info("Records read from CSV: %d", df_raw.count())
         log.info("CSV columns: %s", df_raw.columns)
 
-        # Robust column rename: ANAC CSV headers may have encoding artifacts
-        # (e.g. "Ã©" instead of "é"). We build a normalized lookup to match.
-        import unicodedata
-
-        def normalize(s: str) -> str:
-            """Strip accents, lowercase, collapse whitespace."""
-            nfkd = unicodedata.normalize("NFKD", s)
-            ascii_only = "".join(c for c in nfkd if not unicodedata.combining(c))
-            return " ".join(ascii_only.lower().split())
-
-        # Build normalized key -> desired alias
-        norm_map = {normalize(k): v for k, v in ANAC_COLUMN_MAP.items()}
-
         df_renamed = df_raw
-        for col_name in df_raw.columns:
-            norm_key = normalize(col_name)
-            if norm_key in norm_map:
-                df_renamed = df_renamed.withColumnRenamed(col_name, norm_map[norm_key])
+        for col_original, col_alias in ANAC_COLUMN_MAP.items():
+            if col_original in df_raw.columns:
+                df_renamed = df_renamed.withColumnRenamed(col_original, col_alias)
 
         df_gru = df_renamed.filter(
             (F.col("cd_icao_origem") == "SBGR") | (F.col("cd_icao_destino") == "SBGR")

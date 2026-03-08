@@ -14,8 +14,5 @@ gru_connect:
         spark.sql.catalog.local.type: "hadoop"
         # O catalog aponta para o mesmo warehouse dos Spark jobs
         spark.sql.catalog.local.warehouse: "{{ env_var('GRU_BASE_DIR') }}/warehouse"
-        # Pacote Iceberg (JAR baixado automaticamente pelo Spark na 1ª execução)
-        spark.jars.packages: "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.0"
-        # Compatibilidade
         spark.sql.sources.partitionOverwriteMode: "dynamic"
         spark.sql.legacy.allowNonEmptyLocationInCTAS: "true"

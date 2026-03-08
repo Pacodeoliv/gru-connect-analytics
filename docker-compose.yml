@@ -85,29 +85,64 @@ services:
   # ─── Apache Spark Master ──────────────────────────────────────────────────
   spark-master:
     image: apache/spark:3.5.0
-    entrypoint: [ "/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master" ]
+    user: root
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        ICEBERG_JAR="/opt/spark/jars/iceberg-spark-runtime-3.5_2.12-1.5.0.jar"
+        if [ ! -f "$$ICEBERG_JAR" ]; then
+          echo "Baixando biblioteca Iceberg..."
+          curl -s https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-3.5_2.12/1.5.0/iceberg-spark-runtime-3.5_2.12-1.5.0.jar \
+               -o "$$ICEBERG_JAR"
+        else
+          echo "Biblioteca Iceberg ja presente, pulando download."
+        fi
+
+        /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master &
+
+        sleep 10
+
+        /opt/spark/sbin/start-thriftserver.sh \
+          --master spark://spark-master:7077 \
+          --jars "$$ICEBERG_JAR" \
+          --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
+          --conf spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkSessionCatalog \
+          --conf spark.sql.catalog.spark_catalog.type=hadoop \
+          --conf spark.sql.catalog.spark_catalog.warehouse=/opt/airflow/warehouse \
+          --conf spark.sql.catalog.local=org.apache.iceberg.spark.SparkCatalog \
+          --conf spark.sql.catalog.local.type=hadoop \
+          --conf spark.sql.catalog.local.warehouse=/opt/airflow/warehouse \
+          --conf spark.hive.server2.thrift.port=10000 \
+          --conf spark.hive.server2.thrift.bind.host=0.0.0.0
+
+        tail -f /opt/spark/logs/*
     environment:
       SPARK_MASTER_HOST: spark-master
       SPARK_MASTER_PORT: "7077"
       SPARK_MASTER_WEBUI_PORT: "8082"
     ports:
-      - "7077:7077" # Spark master (submit jobs aqui)
-      - "8082:8082" # Spark Web UI
+      - "7077:7077"
+      - "8082:8082"
+      - "10000:10000"
     volumes:
       - ./data:/opt/spark/data
-      - ./warehouse:/opt/spark/warehouse
+      - ./warehouse:/opt/airflow/warehouse
+      - spark-jars:/opt/spark/jars # volume compartilhado com workers
     restart: unless-stopped
 
   # ─── Apache Spark Worker ──────────────────────────────────────────────────
   spark-worker:
     image: apache/spark:3.5.0
+    user: root
     entrypoint: [ "/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077" ]
     environment:
       SPARK_WORKER_MEMORY: 2G
       SPARK_WORKER_CORES: "2"
     volumes:
       - ./data:/opt/spark/data
-      - ./warehouse:/opt/spark/warehouse
+      - ./warehouse:/opt/airflow/warehouse # path alinhado ao master
+      - spark-jars:/opt/spark/jars # mesmo JAR Iceberg que o driver usa
     depends_on:
       - spark-master
     restart: unless-stopped
@@ -126,3 +161,4 @@ services:
 volumes:
   postgres-db:
   airflow-logs:
+  spark-jars: # JARs compartilhados entre master (driver) e workers (executors)
